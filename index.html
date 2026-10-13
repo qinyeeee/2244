@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="蜜糖小镇">
+<meta name="theme-color" content="#ffeef2">
+<title>蜜糖小镇 · 完整版</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:#fceef2;font-family:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;height:100vh;height:100dvh;width:100vw;overflow:hidden;color:#3a2c33}
+.app{height:100%;width:100%;background:#fff7f9;display:flex;flex-direction:column;position:relative}
+
+/* 持久化状态提示 */
+.persist-banner{background:linear-gradient(90deg,#ffe0e8,#fff0f4);border-bottom:1px solid #ffd4e0;padding:8px 12px;font-size:12px;color:#a9557a;display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;z-index:20}
+.persist-banner.ok{background:linear-gradient(90deg,#e0f5ea,#f0fbf5);border-bottom-color:#c0e5d4;color:#2c6b55}
+.persist-banner button{background:#fff;border:1px solid #ffd4e0;border-radius:20px;padding:4px 10px;font-size:11px;cursor:pointer;color:#bc6f8f}
+
+.top-bar{background:rgba(255,245,245,.94);backdrop-filter:blur(12px);padding:6px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffe2ea;z-index:10}
+.left-actions,.right-actions{display:flex;gap:6px}
+.icon-btn{background:#ffeef2;border:none;border-radius:40px;width:34px;height:34px;font-size:1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#bc6f8f}
+.current-role-info{background:#fff0f4;padding:3px 12px;border-radius:50px;display:flex;align-items:center;gap:6px;font-size:.85rem}
+.chat-area{flex:1;overflow-y:auto;padding:14px 10px;display:flex;flex-direction:column;gap:12px;background-size:cover;background-position:center;background-repeat:no-repeat;transition:background-image .2s}
+.message{display:flex;max-width:85%;animation:fadeSlide .2s ease}
+.user-message{align-self:flex-end;justify-content:flex-end}
+.assistant-message{align-self:flex-start}
+.bubble{padding:9px 13px;border-radius:22px;line-height:1.45;font-size:.88rem;word-break:break-word}
+.user-bubble{background:#ffdae5;color:#663b4a;border-bottom-right-radius:6px}
+.assistant-bubble{background:#fff;border:1px solid #ffe2ea;color:#4c3440;border-bottom-left-radius:6px}
+.assistant-bubble p{margin:0 0 6px 0}
+.assistant-bubble p:last-child{margin-bottom:0}
+.chat-img{max-width:160px;border-radius:14px;margin-top:5px;border:1px solid #ffc0d0;cursor:pointer;display:block}
+.vision-hint{font-size:10px;color:#c98ea2;margin-top:3px}
+.redpacket-card{background:#ffefd1;border-radius:18px;padding:7px 11px;border-left:4px solid #ff9b6e}
+.typing-indicator{background:#fff;border-radius:24px;padding:7px 13px;display:inline-flex;gap:5px}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.input-container{background:#ffffffdd;backdrop-filter:blur(12px);border-top:1px solid #ffecf0;padding:6px 10px calc(10px + env(safe-area-inset-bottom,0px))}
+.input-row{display:flex;gap:6px;align-items:flex-end}
+.input-wrapper{flex:1;background:#fff3f6;border-radius:28px;padding:4px 12px;border:1px solid #ffe2e9}
+.input-wrapper textarea{width:100%;border:none;background:transparent;resize:none;font-size:.85rem;font-family:inherit;outline:none;max-height:70px;padding:4px 0}
+.action-icon{background:#ffeef2;border:none;width:38px;height:38px;border-radius:38px;font-size:1.15rem;cursor:pointer}
+.send-btn{background:#ffb7cb;width:40px;height:40px;border-radius:40px;font-size:1.15rem;color:#fff;border:none}
+.emoji-drawer-overlay{position:fixed;bottom:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:300;visibility:hidden;opacity:0;transition:.2s;display:flex;align-items:flex-end}
+.emoji-drawer-overlay.active{visibility:visible;opacity:1}
+.emoji-drawer{background:#fff5f9;width:100%;max-height:60vh;border-radius:32px 32px 0 0;overflow-y:auto;padding:16px 12px 24px;box-shadow:0 -4px 20px rgba(0,0,0,.08)}
+.emoji-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px 8px;margin-top:8px}
+.emoji-grid-item{background:#fff0f4;border-radius:18px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;cursor:pointer;border:1px solid #ffe2ea}
+.emoji-grid-img{width:48px;height:48px;object-fit:contain;border-radius:14px}
+.emoji-grid-text{font-size:10px;margin-top:5px;color:#b66882;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer-header{display:flex;justify-content:space-between;align-items:baseline;padding:0 6px 12px;font-weight:600;color:#d47b9c;border-bottom:1px solid #ffe2ea}
+.manage-badge{background:#ffeef2;border-radius:40px;padding:4px 12px;font-size:12px;cursor:pointer}
+.drawer-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(92,55,66,.3);backdrop-filter:blur(4px);z-index:200;visibility:hidden;opacity:0;transition:.2s}
+.drawer-overlay.open{visibility:visible;opacity:1}
+.drawer{position:fixed;top:0;left:0;width:280px;max-width:75vw;height:100%;background:#fffbfd;transform:translateX(-100%);transition:transform .25s;z-index:201;border-radius:0 28px 28px 0;display:flex;flex-direction:column;overflow-y:auto}
+.drawer.open{transform:translateX(0)}
+.drawer-header{padding:28px 20px 12px;font-weight:600;color:#d47b9c;border-bottom:1px solid #ffe2ec}
+.role-card{background:#fff2f6;border-radius:32px;padding:8px 12px;margin:8px 12px;display:flex;align-items:center;gap:10px}
+.role-card.active{background:#ffe9f0;border-left:4px solid #ff9dbb}
+.todo-item{background:#fff5f8;border-radius:20px;padding:8px 12px;margin:6px 12px;display:flex;justify-content:space-between;font-size:.85rem}
+.modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:400;visibility:hidden;opacity:0;transition:.2s}
+.modal-mask.active{visibility:visible;opacity:1}
+.modal-card{width:300px;max-width:88vw;background:#fffef7;border-radius:40px;padding:20px;max-height:85vh;overflow-y:auto}
+input,textarea{border-radius:24px;border:1px solid #ffd4e0;padding:8px 12px;width:100%;margin:6px 0;font-family:inherit;font-size:.85rem}
+select{border-radius:20px;border:1px solid #ffd4e0;padding:7px 10px;font-family:inherit;font-size:.82rem;background:#fff;outline:none}
+input[type="checkbox"]{width:auto;margin:0}
+input[type="color"]{padding:0;height:36px;border-radius:14px;cursor:pointer}
+.btn-primary{background:#ffb7cb;color:#fff;border:none;border-radius:40px;padding:9px;margin-top:8px;cursor:pointer;font-size:.9rem;width:100%}
+.tiny-btn{background:#ffeef3;border:none;border-radius:40px;padding:6px 12px;margin:4px 0;cursor:pointer;font-size:.8rem}
+.upload-btn{background:#e8f5ef;color:#2c6b55;border:1px dashed #a5d4bf;border-radius:20px;padding:8px 12px;margin:6px 0;cursor:pointer;font-size:.8rem;width:100%;text-align:center}
+.upload-info{font-size:11px;color:#8aa79a;margin-top:2px;text-align:center;white-space:pre-wrap}
+.empty-tip{color:#e0b2c2;text-align:center;padding:20px;font-size:.85rem}
+.emoji-admin-item{display:flex;align-items:center;gap:8px;width:100%;background:#fff5f7;border-radius:22px;padding:5px 10px;margin-bottom:6px}
+.emoji-preview{width:32px;height:32px;object-fit:contain}
+.color-preview{width:100%;height:36px;border-radius:22px;margin:8px 0;border:1px solid #ffd4e0}
+.bg-preview{width:100%;height:70px;background-size:cover;background-position:center;border-radius:18px;margin:8px 0;border:1px solid #ffe2ea}
+.btn-row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.test-result{font-size:12px;margin-top:8px;padding:6px;border-radius:18px;background:#f5f0f2;color:#a97086;text-align:center;min-height:20px;white-space:pre-wrap;word-break:break-word}
+.memory-item{background:#fff5f8;border-radius:18px;padding:8px 12px;margin-bottom:8px;font-size:.78rem}
+.vec-badge{display:inline-block;background:#e6f5ec;color:#3a8060;font-size:9px;padding:1px 5px;border-radius:20px;margin-left:4px}
+.rgb-row{display:flex;align-items:center;gap:6px;margin:6px 0}
+.rgb-row label{font-size:.75rem;color:#b66882;width:14px}
+.rgb-row input[type="number"]{flex:1;margin:0;padding:6px 10px;text-align:center}
+.checkbox-row{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:.82rem;color:#8b6573}
+.image-view-img{width:100%;border-radius:22px;margin:8px 0;display:block}
+.img-info-block{background:#fff5f8;border-radius:18px;padding:10px 12px;margin:8px 0;font-size:.78rem;line-height:1.5}
+.img-info-block b{color:#bc6f8f}
+.storage-info{font-size:11px;color:#8aa79a;margin-top:6px;text-align:center}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="persistBanner" class="persist-banner" style="display:none;"></div>
+  <div class="top-bar">
+    <div class="left-actions"><button class="icon-btn" id="menuToggleBtn">🌸</button><button class="icon-btn" id="moreMenuBtn">✨</button></div>
+    <div class="current-role-info"><span id="curRoleAvatar">🐰</span><span id="curRoleName">月兔</span></div>
+    <div class="right-actions"><button class="icon-btn" id="apiSettingsBtn">⚙️</button><button class="icon-btn" id="themeBtn">🎨</button></div>
+  </div>
+  <div class="chat-area" id="chatArea"><div class="empty-tip">✨ 选个角色，开启甜心旅程 ✨</div></div>
+  <div class="input-container">
+    <div class="input-row">
+      <div class="input-wrapper"><textarea id="messageInput" rows="1" placeholder="写句话吧～"></textarea></div>
+      <button class="action-icon" id="redpacketBtn">🧧</button>
+      <button class="action-icon" id="sendImageBtn">📷</button>
+      <button class="action-icon" id="openEmojiDrawerBtn">😊</button>
+      <button class="send-btn" id="sendBtn">➤</button>
+    </div>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay"><div class="drawer" id="drawer">
+  <div class="drawer-header">🍬 小伙伴</div>
+  <div id="roleListContainer"></div>
+  <div class="drawer-header" style="padding-top:8px;">📋 待办/未来计划</div>
+  <div id="todoListContainer"></div>
+  <div id="addRoleBtn" style="margin:12px;background:#ffedf2;border-radius:40px;padding:10px;text-align:center;cursor:pointer;font-size:.85rem;">+ 结交新角色</div>
+</div></div>
+
+<div class="emoji-drawer-overlay" id="emojiDrawerOverlay"><div class="emoji-drawer">
+  <div class="drawer-header"><span>🍬 我的表情包</span><span class="manage-badge" id="openManageEmojiBtn">管理</span></div>
+  <div id="emojiGridContainer" class="emoji-grid"></div>
+  <div style="text-align:center;margin-top:12px;font-size:12px;color:#dc9eb2;">点击表情即可发送</div>
+</div></div>
+
+<div class="modal-mask" id="themeModal"><div class="modal-card">
+<h3>🎨 主题梦境</h3>
+<div style="margin:10px 0;">
+<label style="font-size:.8rem;color:#b66882;">主色调 (0-255)</label>
+<div class="rgb-row"><label>R</label><input type="number" id="colorR" min="0" max="255" value="255"><input type="color" id="colorPicker" style="width:44px;flex:0 0 44px;margin:0;"></div>
+<div class="rgb-row"><label>G</label><input type="number" id="colorG" min="0" max="255" value="218"></div>
+<div class="rgb-row"><label>B</label><input type="number" id="colorB" min="0" max="255" value="229"></div>
+<div id="colorPreview" class="color-preview"></div>
+</div>
+<div style="margin-top:8px;">
+<label style="font-size:.8rem;color:#b66882;">聊天背景图片</label>
+<input type="file" id="bgImageUpload" accept="image/*">
+<div id="bgPreview" class="bg-preview"></div>
+<button class="tiny-btn" id="resetBgBtn">重置默认背景</button>
+</div>
+<div class="storage-info" id="storageInfo"></div>
+<button class="btn-primary" id="closeThemeModal">完成</button>
+</div></div>
+
+<div class="modal-mask" id="moreModal"><div class="modal-card">
+<h3>🍰 小世界</h3>
+<button class="tiny-btn" id="editUserPersonaBtn" style="width:100%;">📝 编辑「我」的人设</button>
+<button class="tiny-btn" id="editMemoryBtn" style="width:100%;margin-top:8px;">📖 编辑角色记忆</button>
+<button class="tiny-btn" id="vectorMemorySettingsBtn" style="width:100%;margin-top:8px;">🧠 向量记忆设置</button>
+<button class="tiny-btn" id="openTodoSettingsBtn" style="width:100%;margin-top:8px;">⏲️ 自动总结阈值</button>
+<button class="tiny-btn" id="exportCurrentBtn" style="width:100%;margin-top:8px;">💾 导出当前角色对话</button>
+<button class="tiny-btn" id="exportAllBtn" style="width:100%;margin-top:8px;">📚 导出全部角色对话</button>
+<button class="tiny-btn" id="exportBackupBtn" style="width:100%;margin-top:8px;">🗄️ 导出完整备份 (JSON)</button>
+<button class="tiny-btn" id="importBackupBtn" style="width:100%;margin-top:8px;">📥 导入备份</button>
+<button class="tiny-btn" id="cleanOldImagesBtn" style="width:100%;margin-top:8px;">🧹 清理30天前的图片</button>
+<button class="tiny-btn" id="closeMoreModal" style="width:100%;margin-top:8px;">关闭</button>
+</div></div>
+
+<div class="modal-mask" id="memoryModal"><div class="modal-card"><h3>🧠 记忆 · <span id="memoryRoleName"></span></h3><div id="memoryListContainer"></div><input type="text" id="newMemoryInput" placeholder="新记忆..."><div class="btn-row"><button class="tiny-btn" id="addMemoryConfirmBtn">➕添加</button><button class="tiny-btn" id="aiSummarizeMemoryBtn">✨ AI总结</button></div><button class="btn-primary" id="closeMemoryModalBtn">完成</button></div></div>
+
+<div class="modal-mask" id="vectorModal"><div class="modal-card">
+<h3>🧠 向量记忆</h3>
+<label class="checkbox-row"><input type="checkbox" id="vectorEnabled"><span>启用向量召回</span></label>
+<input type="password" id="vectorApiKey" placeholder="硅基流动 API Key (sk-...)">
+<input type="text" id="vectorModel" placeholder="嵌入模型" value="BAAI/bge-m3">
+<label style="font-size:.8rem;color:#b66882;">召回数量: <span id="topKValue">3</span> 条</label>
+<input type="range" id="vectorTopK" min="1" max="10" value="3" style="width:100%;margin:4px 0;">
+<button class="tiny-btn" id="rebuildVectorsBtn" style="width:100%;">🔄 重建所有记忆向量</button>
+<div id="vectorStatus" class="test-result"></div>
+<p style="font-size:11px;color:#c292a8;margin-top:8px;line-height:1.5;">💡 免费模型：<b>BAAI/bge-m3</b><br>🔗 在 <a href="https://cloud.siliconflow.cn/" target="_blank" style="color:#d47b9c;">硅基流动</a> 免费注册</p>
+<div class="btn-row"><button class="tiny-btn" id="saveVectorBtn" style="flex:1;">保存</button><button class="tiny-btn" id="closeVectorBtn" style="flex:1;">取消</button></div>
+</div></div>
+
+<div class="modal-mask" id="userPersonaModal"><div class="modal-card">
+<h3>🌟 我的设定</h3>
+<button class="upload-btn" id="uploadUserPersonaBtn">📄 上传人设文件 (可多选 .txt / .md)</button>
+<div class="upload-info" id="userPersonaFileInfo"></div>
+<textarea id="userPersonaInput" rows="5" placeholder="或者直接在这里写：我叫小莓，喜欢……"></textarea>
+<button class="btn-primary" id="saveUserPersonaBtn">保存</button>
+<button class="tiny-btn" id="closePersonaModal" style="width:100%;">取消</button>
+</div></div>
+
+<div class="modal-mask" id="roleEditModal"><div class="modal-card">
+<h3>✏️ 编辑角色</h3>
+<input type="text" id="editRoleName" placeholder="角色名">
+<button class="upload-btn" id="uploadRoleDescBtn">📄 上传角色人设文件 (可多选 .txt / .md)</button>
+<div class="upload-info" id="roleDescFileInfo"></div>
+<textarea id="editRoleDesc" rows="5" placeholder="角色设定 / 性格 / 语气 / 背景故事……"></textarea>
+<input type="text" id="editRoleAvatar" placeholder="头像 emoji，如 🐇">
+<div class="btn-row"><button class="tiny-btn" id="confirmRoleEditBtn" style="flex:1;">保存</button><button class="tiny-btn" id="cancelRoleEditBtn" style="flex:1;">取消</button></div>
+</div></div>
+
+<div class="modal-mask" id="apiModal"><div class="modal-card">
+<h3>🔌 对话 API</h3>
+<input type="text" id="apiUrl" placeholder="API地址 (完整URL，以 /chat/completions 结尾)">
+<input type="password" id="apiKey" placeholder="API Key">
+<input type="text" id="modelName" placeholder="模型名 (如 deepseek-chat)">
+<label class="checkbox-row"><input type="checkbox" id="visionEnabledCheck"><span>该模型支持识图</span></label>
+<div style="margin:8px 0;">
+<label style="font-size:.8rem;color:#b66882;display:block;margin-bottom:4px;">图片发送格式</label>
+<select id="visionFormat">
+<option value="base64">纯 base64（New API / One API 等代理）</option>
+<option value="dataurl">data URL（OpenAI 官方）</option>
+</select>
+</div>
+<div class="btn-row"><button class="tiny-btn" id="testApiBtn">🔍 测试</button><button class="tiny-btn" id="saveApiBtn">保存</button><button class="tiny-btn" id="closeApiBtn">取消</button></div>
+<div id="testResult" class="test-result"></div>
+</div></div>
+
+<div class="modal-mask" id="redpacketModal"><div class="modal-card"><h3>🧧 红包</h3><input type="number" id="redpacketAmount" placeholder="金额"><textarea id="redpacketWish" rows="2" placeholder="祝福语"></textarea><div class="btn-row"><button class="tiny-btn" id="sendRedpacketBtn" style="flex:1;">发送</button><button class="tiny-btn" id="cancelRedpacketModal" style="flex:1;">取消</button></div></div></div>
+<div class="modal-mask" id="summaryThresholdModal"><div class="modal-card"><h3>总结阈值</h3><p style="font-size:.8rem;color:#8b6573;">每新增多少条对话自动记忆总结</p><input type="number" id="summaryThresholdInput" value="30"><div class="btn-row"><button class="tiny-btn" id="saveThresholdBtn" style="flex:1;">保存</button><button class="tiny-btn" id="closeThresholdModal" style="flex:1;">取消</button></div></div></div>
+<div class="modal-mask" id="manageEmojiModal"><div class="modal-card"><h3>📸 管理表情包</h3><button class="tiny-btn" id="addEmojiBatchBtn" style="width:100%;">➕ 批量添加图片</button><div id="emojiAdminList" style="max-height:260px;overflow-y:auto;margin:12px 0;"></div><button class="btn-primary" id="closeEmojiModal">关闭</button></div></div>
+
+<div class="modal-mask" id="imageViewModal"><div class="modal-card">
+<h3>🖼️ 图片详情</h3>
+<img id="imageViewImg" class="image-view-img" src="" alt="">
+<div class="img-info-block"><b>你的描述：</b><span id="imageViewCaption"></span></div>
+<div class="img-info-block" id="imageViewVisionBlock"><b>AI 的描述：</b><span id="imageViewVision">（AI 尚未解析）</span></div>
+<button class="btn-primary" id="closeImageViewBtn">关闭</button>
+</div></div>
+
+<script>
+/* =========================================================
+   IndexedDB 图片存储层
+   ========================================================= */
+const DB_NAME = 'sweetTownDB';
+const DB_VERSION = 1;
+const STORE_IMAGES = 'images';
+let _dbPromise = null;
+function openDB(){
+  if(_dbPromise) return _dbPromise;
+  _dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains(STORE_IMAGES)){
+        db.createObjectStore(STORE_IMAGES, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+  return _dbPromise;
+}
+async function idbSaveImage(id, dataURL){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_IMAGES, 'readwrite');
+    tx.objectStore(STORE_IMAGES).put({ id, data: dataURL, ts: Date.now() });
+    tx.oncomplete = () => resolve(id);
+    tx.onerror = e => reject(e.target.error);
+  });
+}
+async function idbGetImage(id){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_IMAGES, 'readonly');
+    const req = tx.objectStore(STORE_IMAGES).get(id);
+    req.onsuccess = () => resolve(req.result ? req.result.data : null);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+async function idbDeleteImage(id){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_IMAGES, 'readwrite');
+    tx.objectStore(STORE_IMAGES).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = e => reject(e.target.error);
+  });
+}
+async function idbGetAll(){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_IMAGES, 'readonly');
+    const req = tx.objectStore(STORE_IMAGES).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+async function idbEstimate(){
+  try{
+    const all = await idbGetAll();
+    const bytes = all.reduce((s, x) => s + (x.data ? x.data.length : 0), 0);
+    return { count: all.length, bytes };
+  }catch(e){ return { count: 0, bytes: 0 }; }
+}
+async function idbCleanOldImages(days){
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const all = await idbGetAll();
+  let deleted = 0;
+  for(const item of all){
+    if(item.ts < cutoff){
+      await idbDeleteImage(item.id);
+      deleted++;
+    }
+  }
+  return deleted;
+}
+async function idbClearAll(){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_IMAGES, 'readwrite');
+    tx.objectStore(STORE_IMAGES).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = e => reject(e.target.error);
+  });
+}
+
+/* =========================================================
+   内存图片缓存
+   ========================================================= */
+const imageCache = new Map();   // id -> dataURL
+
+async function preloadImages(){
+  try{
+    const all = await idbGetAll();
+    all.forEach(item => { imageCache.set(item.id, item.data); });
+    console.log(`✅ 已预加载 ${all.length} 张图片到缓存`);
+  }catch(e){ console.warn('预加载图片失败', e); }
+}
+function getCachedImage(id){
+  return imageCache.get(id) || null;
+}
+
+/* =========================================================
+   数据迁移：localStorage → IndexedDB
+   ========================================================= */
+async function migrateImagesToIDB(){
+  const ROLES_KEY = 'sweet_roles_v19';
+  const EMOJI_KEY = 'emojiLibrary_v16';
+  let migrated = 0;
+
+  // 迁移角色聊天图片
+  const rolesRaw = localStorage.getItem(ROLES_KEY);
+  if(rolesRaw){
+    try{
+      const roles = JSON.parse(rolesRaw);
+      for(const role of roles){
+        if(!role.messages) continue;
+        for(const msg of role.messages){
+          if(msg.type === 'image' && msg.imageData && !msg.imageId){
+            const id = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
+            await idbSaveImage(id, msg.imageData);
+            imageCache.set(id, msg.imageData);
+            msg.imageId = id;
+            delete msg.imageData;
+            migrated++;
+          }
+        }
+      }
+      localStorage.setItem(ROLES_KEY, JSON.stringify(roles));
+    }catch(e){ console.warn('迁移聊天图片失败', e); }
+  }
+
+  // 迁移表情包图片
+  const emojiRaw = localStorage.getItem(EMOJI_KEY);
+  if(emojiRaw){
+    try{
+      const emojis = JSON.parse(emojiRaw);
+      for(const em of emojis){
+        if(em.base64 && em.base64.startsWith('data:image') && !em.imageId){
+          const id = 'emoji_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
+          await idbSaveImage(id, em.base64);
+          imageCache.set(id, em.base64);
+          em.imageId = id;
+          delete em.base64;
+          migrated++;
+        }
+      }
+      localStorage.setItem(EMOJI_KEY, JSON.stringify(emojis));
+    }catch(e){ console.warn('迁移表情包失败', e); }
+  }
+
+  // 迁移背景图
+  const bg = localStorage.getItem('chatBgImage');
+  if(bg && bg.startsWith('data:image')){
+    try{
+      await idbSaveImage('bg_current', bg);
+      imageCache.set('bg_current', bg);
+      localStorage.setItem('chatBgImageId', 'bg_current');
+      localStorage.removeItem('chatBgImage');
+      migrated++;
+    }catch(e){ console.warn('迁移背景图失败', e); }
+  }
+
+  if(migrated > 0) console.log(`✅ 已迁移 ${migrated} 张图片到 IndexedDB`);
+  return migrated;
+}
+
+/* =========================================================
+   持久化请求
+   ========================================================= */
+async function requestPersistence(){
+  if(!navigator.storage || !navigator.storage.persist) return 'unsupported';
+  try{
+    if(navigator.storage.persisted){
+      const already = await navigator.storage.persisted();
+      if(already) return 'persisted';
+    }
+    const granted = await navigator.storage.persist();
+    return granted ? 'granted' : 'denied';
+  }catch(e){ return 'error'; }
+}
+async function showPersistBanner(){
+  const banner = document.getElementById('persistBanner');
+  const status = await requestPersistence();
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+
+  if(status === 'persisted' || status === 'granted'){
+    banner.className = 'persist-banner ok';
+    banner.innerHTML = '<span>✅ 数据已持久化，不会被系统清理</span>';
+    banner.style.display = 'flex';
+    setTimeout(() => { banner.style.display = 'none'; }, 4000);
+    return;
+  }
+
+  banner.style.display = 'flex';
+  if(isIOS && !isStandalone){
+    banner.className = 'persist-banner';
+    banner.innerHTML = '<span>⚠️ iOS 提示：请点「分享 → 添加到主屏幕」，从图标打开以保护数据</span><button onclick="this.parentElement.style.display=\'none\'">知道了</button>';
+  } else if(isIOS && isStandalone){
+    banner.className = 'persist-banner';
+    banner.innerHTML = '<span>⚠️ 持久化未授权，建议在设置中检查存储权限</span><button onclick="this.parentElement.style.display=\'none\'">隐藏</button>';
+  } else {
+    banner.className = 'persist-banner ok';
+    banner.innerHTML = '<span>ℹ️ 存储正常。浏览器如果空间紧张，可能会清理数据</span><button onclick="this.parentElement.style.display=\'none\'">隐藏</button>';
+  }
+}
+
+/* =========================================================
+   全局数据
+   ========================================================= */
+const ROLES_KEY = 'sweet_roles_v19';
+const EMOJI_KEY = 'emojiLibrary_v16';
+const PERSONA_KEY = 'sweet_userPersona';
+const API_KEY = 'sweet_api';
+const VECTOR_KEY = 'sweet_vector';
+const THRESHOLD_KEY = 'summaryThreshold';
+const THEME_KEY = 'themeColor';
+const BG_KEY = 'chatBgImageId';
+const CUR_ROLE_KEY = 'sweet_currentRoleId';
+
+let roles = [];
+let currentRoleId = null;
+let globalUserPersona = "你是温柔可爱的少女，喜欢甜点和星星。";
+let apiConfig = { url: "", key: "", model: "", vision: false, visionFormat: "base64" };
+let vectorConfig = { enabled: false, apiKey: "", model: "BAAI/bge-m3", topK: 3 };
+let isLoading = false;
+let summaryThreshold = 30;
+let emojiLibrary = [];
+let themeColor = { r: 255, g: 218, b: 229 };
+let bgImageId = null;
+
+function generateId(){ return Date.now() + '-' + Math.random().toString(36).substr(2,6); }
+
+const defaultRoles = [
+  { id: generateId(), name: "月兔·糯糯", avatar: "🐇", description: "软萌兔兔，喜欢星星和胡萝卜蛋糕，说话结尾带'呐~'", messages: [], memories: [], todoList: [], lastSummaryCount: 0 },
+  { id: generateId(), name: "糖霜小狐", avatar: "🦊", description: "元气小狐狸，喜欢甜言蜜语，偶尔恶作剧", messages: [], memories: [], todoList: [], lastSummaryCount: 0 }
+];
+
+/* =========================================================
+   加载数据
+   ========================================================= */
+async function loadAll(){
+  const storedRoles = localStorage.getItem(ROLES_KEY);
+  if(storedRoles){ try{ roles = JSON.parse(storedRoles); }catch(e){} }
+  if(!roles || !roles.length) roles = JSON.parse(JSON.stringify(defaultRoles));
+  roles.forEach(r=>{ if(!r.messages) r.messages=[]; if(!r.memories) r.memories=[]; if(!r.todoList) r.todoList=[]; if(r.lastSummaryCount===undefined) r.lastSummaryCount=0; });
+  const storedCur = localStorage.getItem(CUR_ROLE_KEY);
+  if(storedCur && roles.some(r=>r.id===storedCur)) currentRoleId = storedCur;
+  else currentRoleId = roles[0]?.id || null;
+  globalUserPersona = localStorage.getItem(PERSONA_KEY) || globalUserPersona;
+  const storedApi = localStorage.getItem(API_KEY); if(storedApi) try{ apiConfig = Object.assign(apiConfig, JSON.parse(storedApi)); }catch(e){}
+  const storedVec = localStorage.getItem(VECTOR_KEY); if(storedVec) try{ vectorConfig = Object.assign(vectorConfig, JSON.parse(storedVec)); }catch(e){}
+  const storedThres = localStorage.getItem(THRESHOLD_KEY); if(storedThres) summaryThreshold = parseInt(storedThres) || 30;
+  const storedEmoji = localStorage.getItem(EMOJI_KEY);
+  if(storedEmoji) try{ emojiLibrary = JSON.parse(storedEmoji); }catch(e){}
+  if(!emojiLibrary.length){
+    emojiLibrary = [
+      { id: generateId(), name: "棉花糖", emoji: "🍬" },
+      { id: generateId(), name: "小星星", emoji: "⭐" },
+      { id: generateId(), name: "花花", emoji: "🌸" },
+      { id: generateId(), name: "爱心", emoji: "❤️" },
+      { id: generateId(), name: "蛋糕", emoji: "🍰" }
+    ];
+  }
+  const storedColor = localStorage.getItem(THEME_KEY);
+  if(storedColor) try{ themeColor = JSON.parse(storedColor); }catch(e){}
+  bgImageId = localStorage.getItem(BG_KEY) || null;
+
+  applyTheme();
+  syncUIinputs();
+  renderRoleListAndTodo();
+  renderChat();
+  renderEmojiGrid();
+  updateTopBar();
+}
+
+function applyTheme(){
+  const color = `rgb(${clamp(themeColor.r)},${clamp(themeColor.g)},${clamp(themeColor.b)})`;
+  let style = document.getElementById('dynamic-theme');
+  if(!style){ style = document.createElement('style'); style.id = 'dynamic-theme'; document.head.appendChild(style); }
+  style.textContent = `.user-bubble{background:${color};color:#4a2c36}.send-btn{background:${color}}`;
+  const chatArea = document.getElementById('chatArea');
+  const bgData = bgImageId ? getCachedImage(bgImageId) : null;
+  if(bgData){ chatArea.style.backgroundImage = `url(${bgData})`; chatArea.style.backgroundColor = 'transparent'; }
+  else{ chatArea.style.backgroundImage = 'none'; chatArea.style.backgroundColor = '#fff7f9'; }
+  const preview = document.getElementById('colorPreview');
+  if(preview) preview.style.backgroundColor = color;
+  const bgPreviewDiv = document.getElementById('bgPreview');
+  if(bgPreviewDiv) bgPreviewDiv.style.backgroundImage = bgData ? `url(${bgData})` : 'none';
+  const rE = document.getElementById('colorR'), gE = document.getElementById('colorG'), bE = document.getElementById('colorB');
+  if(rE){ rE.value = themeColor.r; gE.value = themeColor.g; bE.value = themeColor.b; }
+  const picker = document.getElementById('colorPicker');
+  if(picker) picker.value = rgbToHex(themeColor.r, themeColor.g, themeColor.b);
+  updateStorageInfo();
+}
+function clamp(v){ return Math.max(0, Math.min(255, parseInt(v) || 0)); }
+function rgbToHex(r,g,b){ return '#' + [r,g,b].map(x=>clamp(x).toString(16).padStart(2,'0')).join(''); }
+function hexToRgb(hex){
+  const m = hex.replace('#','').match(/.{2}/g);
+  if(!m) return null;
+  return { r: parseInt(m[0],16), g: parseInt(m[1],16), b: parseInt(m[2],16) };
+}
+function saveTheme(){
+  localStorage.setItem(THEME_KEY, JSON.stringify(themeColor));
+  if(bgImageId) localStorage.setItem(BG_KEY, bgImageId);
+  else localStorage.removeItem(BG_KEY);
+}
+async function updateStorageInfo(){
+  const info = document.getElementById('storageInfo');
+  if(!info) return;
+  try{
+    const idb = await idbEstimate();
+    let quotaText = '';
+    if(navigator.storage && navigator.storage.estimate){
+      const est = await navigator.storage.estimate();
+      const usageMB = (est.usage/1024/1024).toFixed(1);
+      const quotaMB = (est.quota/1024/1024).toFixed(0);
+      quotaText = ` · 总用量 ${usageMB}/${quotaMB} MB`;
+    }
+    info.innerText = `📦 图片 ${idb.count} 张，约 ${(idb.bytes/1024/1024).toFixed(2)} MB${quotaText}`;
+  }catch(e){ info.innerText = ''; }
+}
+function syncUIinputs(){
+  document.getElementById('apiUrl').value = apiConfig.url || "";
+  document.getElementById('apiKey').value = apiConfig.key || "";
+  document.getElementById('modelName').value = apiConfig.model || "";
+  document.getElementById('visionEnabledCheck').checked = !!apiConfig.vision;
+  document.getElementById('visionFormat').value = apiConfig.visionFormat || "base64";
+  document.getElementById('userPersonaInput').value = globalUserPersona;
+  document.getElementById('summaryThresholdInput').value = summaryThreshold;
+  document.getElementById('vectorEnabled').checked = vectorConfig.enabled;
+  document.getElementById('vectorApiKey').value = vectorConfig.apiKey || "";
+  document.getElementById('vectorModel').value = vectorConfig.model || "BAAI/bge-m3";
+  document.getElementById('vectorTopK').value = vectorConfig.topK || 3;
+  document.getElementById('topKValue').innerText = vectorConfig.topK || 3;
+}
+function saveAll(){
+  try{
+    localStorage.setItem(ROLES_KEY, JSON.stringify(roles));
+    localStorage.setItem(CUR_ROLE_KEY, currentRoleId);
+    localStorage.setItem(PERSONA_KEY, globalUserPersona);
+    localStorage.setItem(API_KEY, JSON.stringify(apiConfig));
+    localStorage.setItem(VECTOR_KEY, JSON.stringify(vectorConfig));
+    localStorage.setItem(THRESHOLD_KEY, summaryThreshold);
+    localStorage.setItem(EMOJI_KEY, JSON.stringify(emojiLibrary));
+    saveTheme();
+  }catch(e){
+    console.error('保存失败：', e);
+    alert('⚠️ 存储空间不足，请到「✨ → 清理30天前的图片」释放空间');
+  }
+}
+function getCurrentRole(){ return roles.find(r=>r.id === currentRoleId); }
+function updateTopBar(){ const r = getCurrentRole(); if(r){ document.getElementById('curRoleAvatar').innerText = r.avatar || '🌸'; document.getElementById('curRoleName').innerText = r.name; } }
+
+function formatAssistantText(text){
+  if(!text) return '';
+  let lines = text.split(/\r?\n/);
+  let paragraphs = [];
+  for(let line of lines){
+    if(line.trim()==='') continue;
+    let sentences = line.split(/(?<=[。！？!?])\s*/);
+    for(let s of sentences) if(s.trim()) paragraphs.push(s.trim());
+  }
+  if(!paragraphs.length) paragraphs = [text];
+  return paragraphs.map(p=>`<p>${escapeHtml(p)}</p>`).join('');
+}
+function renderChat(){
+  const chatDiv = document.getElementById('chatArea');
+  const role = getCurrentRole();
+  if(!role){ chatDiv.innerHTML = '<div class="empty-tip">✨ 请添加角色～</div>'; return; }
+  if(!role.messages.length){ chatDiv.innerHTML = `<div class="empty-tip">✨ 和 ${role.name} 开始聊天吧 ✨</div>`; return; }
+  let html = '';
+  for(let i=0; i<role.messages.length; i++){
+    const msg = role.messages[i];
+    const isUser = msg.role === 'user';
+    const bubbleClass = isUser ? 'user-bubble' : 'assistant-bubble';
+    const alignClass = isUser ? 'user-message' : 'assistant-message';
+    let contentHtml = '';
+    if(msg.type === 'image'){
+      const dataURL = msg.imageId ? getCachedImage(msg.imageId) : null;
+      const imgTag = dataURL ? `<img src="${dataURL}" class="chat-img" data-mid="${i}">` : `<div style="font-size:11px;color:#c98ea2;margin-top:4px;">(图片加载中...)</div>`;
+      const visionHint = msg.visionReply ? `<div class="vision-hint">👁️ 点击图片查看AI描述</div>` : '';
+      contentHtml = `<div>📷 ${escapeHtml(msg.caption||'图片')}${imgTag}${visionHint}</div>`;
+    } else if(msg.type === 'redpacket'){
+      contentHtml = `<div class="redpacket-card">🧧 ${escapeHtml(msg.amount)}元<br>🎁 ${escapeHtml(msg.wish)}</div>`;
+    } else {
+      if(!isUser && msg.type !== 'image' && msg.type !== 'redpacket') contentHtml = formatAssistantText(msg.content);
+      else contentHtml = escapeHtml(msg.content).replace(/\n/g,'<br>');
+    }
+    html += `<div class="message ${alignClass}"><div class="bubble ${bubbleClass}">${contentHtml}</div></div>`;
+  }
+  if(isLoading) html += `<div class="message assistant-message"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+  chatDiv.innerHTML = html;
+  chatDiv.querySelectorAll('.chat-img').forEach(img => {
+    img.addEventListener('click', () => openImageView(parseInt(img.dataset.mid)));
+  });
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+function escapeHtml(str){ if(!str) return ''; return str.replace(/[&<>]/g, m => m==='&'?'&amp;': m==='<'?'&lt;':'&gt;'); }
+
+function openImageView(msgIndex){
+  const role = getCurrentRole();
+  if(!role || !role.messages[msgIndex]) return;
+  const msg = role.messages[msgIndex];
+  const dataURL = msg.imageId ? getCachedImage(msg.imageId) : null;
+  if(!dataURL) return;
+  document.getElementById('imageViewImg').src = dataURL;
+  document.getElementById('imageViewCaption').innerText = msg.caption || '(无)';
+  if(msg.visionReply) document.getElementById('imageViewVision').innerText = msg.visionReply;
+  else document.getElementById('imageViewVision').innerText = '（AI 尚未解析，可能模型不支持视觉）';
+  document.getElementById('imageViewVisionBlock').style.display = 'block';
+  document.getElementById('imageViewModal').classList.add('active');
+}
+
+function compressImage(file, maxSize = 1024, quality = 0.82){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if(Math.max(w,h) > maxSize){
+          const scale = maxSize / Math.max(w,h);
+          w = Math.floor(w*scale); h = Math.floor(h*scale);
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* =========================================================
+   人设文件上传
+   ========================================================= */
+function readTextFile(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+function pickTextFileAndApply(targetTextareaId, infoDivId){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.txt,.md,text/plain,text/markdown';
+  input.multiple = true;
+  input.onchange = async e => {
+    const files = Array.from(e.target.files);
+    if(!files.length) return;
+    const infoDiv = document.getElementById(infoDivId);
+    infoDiv.innerText = `⏳ 正在读取 ${files.length} 个文件...`;
+    try{
+      const parts = [];
+      let skipped = 0;
+      for(const file of files){
+        let content = await readTextFile(file);
+        content = content.replace(/^\uFEFF/, '').trim();
+        if(!content){ skipped++; continue; }
+        if(files.length > 1) parts.push(`【${file.name}】\n${content}`);
+        else parts.push(content);
+      }
+      if(!parts.length){ infoDiv.innerText = ''; alert("所有文件内容为空"); return; }
+      const combined = parts.join('\n\n');
+      const textarea = document.getElementById(targetTextareaId);
+      const hasExisting = textarea.value.trim().length > 0;
+      if(hasExisting){
+        const mode = confirm(`当前已有内容，已选中 ${files.length} 个文件：\n\n【确定】= 追加到末尾\n【取消】= 直接替换`);
+        if(mode) textarea.value = textarea.value.trimEnd() + "\n\n" + combined;
+        else textarea.value = combined;
+      } else textarea.value = combined;
+      let msg = `✅ 已读取 ${files.length} 个文件（共 ${combined.length} 字）`;
+      if(skipped > 0) msg += `\n⚠️ 跳过 ${skipped} 个空文件`;
+      infoDiv.innerText = msg;
+    }catch(err){ infoDiv.innerText = ''; alert("读取失败：" + err.message); }
+  };
+  input.click();
+}
+
+/* =========================================================
+   安全 JSON 请求
+   ========================================================= */
+async function safeFetchJSON(url, options){
+  const resp = await fetch(url, options);
+  if(!resp.ok){
+    let errText = '';
+    try{ errText = await resp.text(); }catch(e){}
+    throw new Error(`HTTP ${resp.status}: ${errText.slice(0,300)}`);
+  }
+  const contentType = resp.headers.get('content-type') || '';
+  if(!contentType.toLowerCase().includes('application/json')){
+    const raw = await resp.text();
+    throw new Error(`服务器返回的不是 JSON\n响应类型: ${contentType || '(未知)'}\n内容片段: ${raw.slice(0,200)}`);
+  }
+  try{ return await resp.json(); }
+  catch(e){ throw new Error(`JSON 解析失败: ${e.message}`); }
+}
+function imageDataToUrl(imageData){
+  if(apiConfig.visionFormat === 'base64') return imageData.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
+  return imageData;
+}
+
+/* =========================================================
+   向量
+   ========================================================= */
+async function getEmbeddings(texts){
+  if(!vectorConfig.apiKey) throw new Error("未配置向量 API Key");
+  const data = await safeFetchJSON("https://api.siliconflow.cn/v1/embeddings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${vectorConfig.apiKey}` },
+    body: JSON.stringify({ model: vectorConfig.model, input: texts })
+  });
+  if(!data.data || !Array.isArray(data.data)) throw new Error("返回格式异常");
+  return data.data.map(d => d.embedding);
+}
+function cosineSimilarity(a, b){
+  let dot=0, magA=0, magB=0;
+  for(let i=0;i<a.length;i++){ dot += a[i]*b[i]; magA += a[i]*a[i]; magB += b[i]*b[i]; }
+  if(magA === 0 || magB === 0) return 0;
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+}
+async function ensureMemoryEmbeddings(role){
+  if(!vectorConfig.apiKey) return false;
+  const missing = role.memories.filter(m => !m.embedding || !Array.isArray(m.embedding));
+  if(missing.length === 0) return true;
+  const batchSize = 8;
+  for(let i=0; i<missing.length; i+=batchSize){
+    const batch = missing.slice(i, i+batchSize);
+    const embs = await getEmbeddings(batch.map(m => m.content));
+    batch.forEach((m, idx) => { m.embedding = embs[idx]; });
+  }
+  saveAll();
+  return true;
+}
+async function recallRelevantMemories(role, query, topK=3){
+  if(!vectorConfig.enabled || !vectorConfig.apiKey) return [];
+  if(!role.memories || role.memories.length === 0) return [];
+  try{
+    const [queryEmb] = await getEmbeddings([query]);
+    const missing = role.memories.filter(m => !m.embedding || !Array.isArray(m.embedding));
+    if(missing.length > 0) await ensureMemoryEmbeddings(role);
+    const scored = role.memories
+      .filter(m => m.embedding && Array.isArray(m.embedding))
+      .map(m => ({ memory: m, score: cosineSimilarity(queryEmb, m.embedding) }));
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, topK).filter(s => s.score > 0.3).map(s => s.memory);
+  }catch(e){ console.warn("向量召回失败：", e); return []; }
+}
+async function buildSystemPrompt(role, query){
+  let sys = `你正在扮演角色“${role.name}”，${role.description || "温柔可爱"}。用户人设: ${globalUserPersona}\n\n`;
+  let recalled = [];
+  if(vectorConfig.enabled && vectorConfig.apiKey && query){
+    recalled = await recallRelevantMemories(role, query, vectorConfig.topK);
+  }
+  if(recalled.length > 0){
+    sys += `【相关回忆片段（按相关度排序）】\n`;
+    recalled.forEach(m => { sys += `· ${m.content}\n`; });
+    sys += `\n请优先参考上述回忆，如果与当前话题相关，可以自然地提及。\n\n`;
+  } else if(role.memories && role.memories.length > 0){
+    const recent = role.memories.slice(-5).map(m => m.content).join("；");
+    sys += `【重要回忆片段】${recent}\n\n`;
+  }
+  sys += `请时刻留意我们之前的对话历史，尤其是用户提到过的计划、经历、情绪或者任何未完成的话题。在合适的时机，你可以主动温柔地询问那些事情的后续发展。另外，请始终保持角色性格，语言可爱活泼。`;
+  return sys;
+}
+function extractReplyContent(data){
+  if(!data) return null;
+  if(data.choices && data.choices[0]){
+    const c = data.choices[0];
+    if(c.message && c.message.content) return c.message.content;
+    if(c.text) return c.text;
+  }
+  if(data.content) return data.content;
+  if(data.response) return data.response;
+  return null;
+}
+async function testApiConnection(){
+  const testUrl = document.getElementById('apiUrl').value.trim();
+  const testKey = document.getElementById('apiKey').value.trim();
+  const testModel = document.getElementById('modelName').value.trim();
+  const resultDiv = document.getElementById('testResult');
+  if(!testUrl || !testKey || !testModel){ resultDiv.innerText = "❌ 请完整填写"; return; }
+  if(!/^https?:\/\/.+/.test(testUrl)){ resultDiv.innerText = "❌ API 地址必须以 http:// 或 https:// 开头"; return; }
+  resultDiv.innerText = "⏳ 正在测试...";
+  try{
+    const data = await safeFetchJSON(testUrl, {
+      method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${testKey}`},
+      body: JSON.stringify({ model: testModel, messages:[{role:"user",content:"hi"}], max_tokens:5 })
+    });
+    const reply = extractReplyContent(data);
+    if(reply && reply.length > 0) resultDiv.innerText = "✅ 连接成功！";
+    else resultDiv.innerText = "⚠️ 返回内容为空";
+  } catch(err){ resultDiv.innerText = `❌ ${err.message}`; }
+}
+
+/* =========================================================
+   发送消息
+   ========================================================= */
+async function sendMessageDirect(text, type='text', extra={}){
+  if(isLoading) return;
+  const role = getCurrentRole();
+  if(!role){ alert("未找到当前角色"); return; }
+
+  let userMsg = { role:'user', type, content: type==='text'?text:(extra.caption||extra.wish||''), timestamp: Date.now() };
+  if(type === 'image'){
+    // ★ 图片存 IndexedDB
+    const imgId = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
+    await idbSaveImage(imgId, extra.imageData);
+    imageCache.set(imgId, extra.imageData);
+    userMsg.imageId = imgId;
+    userMsg.caption = extra.caption;
+    userMsg.visionReply = '';
+  }
+  if(type === 'redpacket'){ userMsg.amount = extra.amount; userMsg.wish = extra.wish; }
+  role.messages.push(userMsg);
+  const userMsgIndex = role.messages.length - 1;
+  saveAll(); renderChat();
+
+  if(!apiConfig.url || !apiConfig.key || !apiConfig.model){
+    role.messages.push({ role:'assistant', type:'text', content:'✨ 还没有配置 API 呢～ 点击右上角 ⚙️ 填入你的模型地址、Key 和模型名。', timestamp: Date.now() });
+    saveAll(); renderChat();
+    return;
+  }
+
+  isLoading = true; renderChat();
+  let sysMsg;
+  try{
+    const q = type === 'text' ? text : (extra.caption || extra.wish || '');
+    sysMsg = await buildSystemPrompt(role, q);
+  }catch(e){
+    sysMsg = `你正在扮演角色“${role.name}”，${role.description || "温柔可爱"}。用户人设: ${globalUserPersona}`;
+  }
+
+  let apiMessages = [{ role:"system", content: sysMsg }];
+  for(let idx=0; idx<role.messages.length; idx++){
+    const m = role.messages[idx];
+    if(m.type === 'image'){
+      if(apiConfig.vision && m.imageId){
+        const dataURL = getCachedImage(m.imageId);
+        if(dataURL){
+          const imgUrl = imageDataToUrl(dataURL);
+          apiMessages.push({
+            role: m.role,
+            content: [
+              { type: "text", text: m.caption ? `用户发来一张图片，他的描述是："${m.caption}"。请先描述你看到的图片内容，然后自然地继续对话。` : `用户发来一张图片，请描述你看到的图片内容，然后自然地继续对话。` },
+              { type: "image_url", image_url: { url: imgUrl } }
+            ]
+          });
+        } else {
+          apiMessages.push({ role: m.role, content: `[用户发送了一张图片，描述: ${m.caption || '图片'}]` });
+        }
+      } else {
+        apiMessages.push({ role: m.role, content: `[用户发送了一张图片，描述: ${m.caption || '图片'}]` });
+      }
+    } else if(m.type === 'redpacket'){
+      apiMessages.push({ role: m.role, content: `[用户发送了红包 ${m.amount}元，祝福: ${m.wish}]` });
+    } else {
+      apiMessages.push({ role: m.role, content: m.content });
+    }
+  }
+  try{
+    const data = await safeFetchJSON(apiConfig.url, {
+      method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiConfig.key}`},
+      body: JSON.stringify({ model: apiConfig.model, messages: apiMessages, temperature: 0.8, max_tokens: 1000 })
+    });
+    let reply = extractReplyContent(data);
+    if(!reply || reply.trim()==="") reply = "❌ 模型返回空内容。请检查 API 地址或更换模型。";
+    if(type === 'image' && role.messages[userMsgIndex]){
+      role.messages[userMsgIndex].visionReply = reply;
+    }
+    role.messages.push({ role:'assistant', type:'text', content: reply, timestamp: Date.now() });
+    saveAll(); renderChat();
+    await extractTodoFromLastMessages(role);
+    await autoSummarizeIfNeeded(role);
+  } catch(err){
+    let errMsg = err.message;
+    if(errMsg.includes('base64') || errMsg.includes('decode')){
+      errMsg += `\n\n💡 图片格式可能不兼容。请到 ⚙️ 对话 API → 图片发送格式 里切换再试。`;
+    }
+    role.messages.push({ role:'assistant', type:'text', content: `❌ 请求失败: ${errMsg}`, timestamp: Date.now() });
+    saveAll(); renderChat();
+  }
+  isLoading = false; renderChat();
+}
+
+async function extractTodoFromLastMessages(role){
+  if(!apiConfig.url) return;
+  const lastMsgs = role.messages.slice(-5);
+  if(lastMsgs.length < 2) return;
+  let conv = lastMsgs.map(m => `${m.role==='user'?'用户':role.name}: ${m.type==='text'?m.content:(m.caption||m.wish||'')}`).join('\n');
+  const prompt = `分析对话，提取未来计划/待办事件，输出JSON数组 [{"time":"时间","task":"事件","people":"人物"}]，没有则[]。对话：${conv}`;
+  try{
+    const data = await safeFetchJSON(apiConfig.url, { method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiConfig.key}`}, body:JSON.stringify({ model: apiConfig.model, messages:[{role:"user",content:prompt}], temperature:0.2, max_tokens:300 }) });
+    let todos = JSON.parse(data.choices?.[0]?.message?.content || '[]');
+    if(Array.isArray(todos)) for(let t of todos) if(t.task && !role.todoList.some(ex=>ex.task===t.task)) role.todoList.push({ id: Date.now(), time: t.time||"待定", task: t.task, people: t.people||"我们", completed: false });
+    if(todos.length) saveAll();
+  }catch(e){}
+}
+async function autoSummarizeIfNeeded(role){
+  if(!apiConfig.url) return;
+  const currentCount = role.messages.length;
+  const lastCount = role.lastSummaryCount || 0;
+  if(currentCount - lastCount >= summaryThreshold && currentCount > 8){
+    const recent = role.messages.slice(-summaryThreshold);
+    let conv = recent.map(m => `${m.role==='user'?'用户':role.name}: ${m.type==='text'?m.content:(m.caption||m.wish||'')}`).join('\n');
+    const prompt = `总结以上对话的核心记忆（40字内）：\n${conv}`;
+    try{
+      const data = await safeFetchJSON(apiConfig.url, { method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiConfig.key}`}, body:JSON.stringify({ model: apiConfig.model, messages:[{role:"user",content:prompt}], temperature:0.4, max_tokens:120 }) });
+      let summary = extractReplyContent(data);
+      if(summary){
+        role.memories.push({ id: Date.now(), content: summary, timestamp: new Date().toISOString() });
+        role.lastSummaryCount = currentCount;
+        saveAll();
+        if(document.getElementById('memoryModal')?.classList.contains('active')) renderMemoryModal();
+      }
+    }catch(e){}
+  }
+}
+
+/* =========================================================
+   导出
+   ========================================================= */
+function formatTime(ts){
+  if(!ts) return '--';
+  const d = new Date(ts); const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+function buildRoleText(role){
+  let text = `【角色: ${role.name}】${role.avatar || ''}\n`;
+  if(role.description) text += `角色设定: ${role.description}\n`;
+  if(role.memories?.length){ text += `记忆片段:\n`; role.memories.forEach(m => { text += `  · ${m.content}\n`; }); }
+  if(role.todoList?.length){ text += `待办事项:\n`; role.todoList.forEach(t => { text += `  ${t.completed?'[✓]':'[ ]'} ${t.time?'['+t.time+'] ':''}${t.task} (${t.people})\n`; }); }
+  text += `\n---------- 对话记录 ----------\n`;
+  if(!role.messages.length){ text += '(暂无对话)\n'; }
+  else {
+    role.messages.forEach(m => {
+      const t = formatTime(m.timestamp);
+      if(m.type === 'image'){
+        text += `[${t}] 用户: [图片] ${m.caption || '(无描述)'}\n`;
+        if(m.visionReply) text += `       AI识图: ${m.visionReply}\n`;
+      } else if(m.type === 'redpacket'){
+        text += `[${t}] 用户: [红包] ${m.amount}元 - ${m.wish || ''}\n`;
+      } else {
+        const sp = m.role === 'user' ? '用户' : role.name;
+        text += `[${t}] ${sp}: ${m.content}\n`;
+      }
+    });
+  }
+  text += '\n\n';
+  return text;
+}
+function downloadTextFile(filename, content){
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function downloadJSON(filename, obj){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function getTimestamp(){
+  const now = new Date(); const pad = n => String(n).padStart(2,'0');
+  return `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+}
+function exportCurrentRole(){
+  const role = getCurrentRole(); if(!role){ alert("没有当前角色"); return; }
+  const now = new Date();
+  let text = `========== 蜜糖小镇 · 对话导出 ==========\n导出时间: ${now.toLocaleString('zh-CN')}\n角色数量: 1\n\n`;
+  text += buildRoleText(role);
+  const safeName = (role.name || '角色').replace(/[\\/:*?"<>|]/g, '_');
+  downloadTextFile(`对话_${safeName}_${getTimestamp()}.txt`, text);
+}
+function exportAllRoles(){
+  if(!roles.length){ alert("还没有任何角色"); return; }
+  const now = new Date();
+  let text = `========== 蜜糖小镇 · 对话导出 ==========\n导出时间: ${now.toLocaleString('zh-CN')}\n角色数量: ${roles.length}\n\n`;
+  roles.forEach(r => { text += buildRoleText(r); });
+  downloadTextFile(`全部对话_${getTimestamp()}.txt`, text);
+}
+async function exportFullBackup(){
+  const allImages = await idbGetAll();
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    roles, globalUserPersona, apiConfig, vectorConfig, summaryThreshold, emojiLibrary, themeColor,
+    bgImageId,
+    images: allImages
+  };
+  downloadJSON(`蜜糖小镇备份_${getTimestamp()}.json`, backup);
+}
+function importBackup(){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    if(!confirm('导入会覆盖当前所有数据，确定继续？')) return;
+    try{
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      if(!backup.roles || !Array.isArray(backup.roles)) throw new Error('备份文件格式不对');
+      // 恢复 localStorage
+      roles = backup.roles;
+      globalUserPersona = backup.globalUserPersona || globalUserPersona;
+      apiConfig = backup.apiConfig || apiConfig;
+      vectorConfig = backup.vectorConfig || vectorConfig;
+      summaryThreshold = backup.summaryThreshold || 30;
+      emojiLibrary = backup.emojiLibrary || emojiLibrary;
+      themeColor = backup.themeColor || themeColor;
+      bgImageId = backup.bgImageId || null;
+      // 恢复 IndexedDB 图片
+      if(backup.images && Array.isArray(backup.images)){
+        await idbClearAll();
+        imageCache.clear();
+        for(const img of backup.images){
+          await idbSaveImage(img.id, img.data);
+          imageCache.set(img.id, img.data);
+        }
+      }
+      saveAll();
+      applyTheme(); updateTopBar(); renderChat(); renderRoleListAndTodo(); renderEmojiGrid();
+      alert('✅ 备份恢复成功！');
+      location.reload();
+    }catch(err){ alert('导入失败：' + err.message); }
+  };
+  input.click();
+}
+
+/* =========================================================
+   表情包
+   ========================================================= */
+function renderEmojiGrid(){
+  const container = document.getElementById('emojiGridContainer');
+  if(!container) return;
+  if(!emojiLibrary.length){ container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;">暂无表情，点“管理”添加～</div>'; return; }
+  let html = '';
+  for(let em of emojiLibrary){
+    let preview;
+    if(em.imageId){
+      const dataURL = getCachedImage(em.imageId);
+      preview = dataURL ? `<img src="${dataURL}" class="emoji-grid-img">` : `<span style="font-size:42px;">⏳</span>`;
+    } else if(em.emoji){
+      preview = `<span style="font-size:42px;">${em.emoji}</span>`;
+    } else {
+      preview = `<span style="font-size:42px;">🌫️</span>`;
+    }
+    html += `<div class="emoji-grid-item" data-id="${em.id}">${preview}<div class="emoji-grid-text">${escapeHtml(em.name)}</div></div>`;
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('.emoji-grid-item').forEach(el => {
+    el.addEventListener('click', async () => {
+      const em = emojiLibrary.find(e=>e.id === el.dataset.id);
+      if(em){
+        if(em.imageId){
+          const dataURL = getCachedImage(em.imageId);
+          if(dataURL){ sendMessageDirect('', 'image', { imageData: dataURL, caption: `[表情] ${em.name}` }); closeEmojiDrawer(); }
+        } else if(em.emoji){
+          sendMessageDirect('', 'text', { text: em.emoji });
+          closeEmojiDrawer();
+        }
+      }
+    });
+  });
+}
+function openEmojiManager(){
+  const container = document.getElementById('emojiAdminList');
+  function renderAdmin(){
+    let html = '';
+    emojiLibrary.forEach((em, idx) => {
+      let preview;
+      if(em.imageId){
+        const dataURL = getCachedImage(em.imageId);
+        preview = dataURL ? `<img src="${dataURL}" class="emoji-preview">` : `<span>⏳</span>`;
+      } else if(em.emoji){ preview = `<span style="font-size:26px;">${em.emoji}</span>`; }
+      else { preview = `<span>🌫️</span>`; }
+      html += `<div class="emoji-admin-item"><div>${preview}</div><div style="flex:1;"><input type="text" value="${escapeHtml(em.name)}" data-idx="${idx}" class="emoji-name-input" style="margin:0;padding:4px;"></div><button class="tiny-btn del-emoji" data-idx="${idx}">🗑️</button></div>`;
+    });
+    container.innerHTML = html;
+    container.querySelectorAll('.emoji-name-input').forEach(inp => inp.addEventListener('change', e => { const idx = inp.dataset.idx; if(emojiLibrary[idx]) emojiLibrary[idx].name = inp.value; saveAll(); }));
+    container.querySelectorAll('.del-emoji').forEach(btn => btn.addEventListener('click', async e => {
+      const idx = parseInt(btn.dataset.idx);
+      const em = emojiLibrary[idx];
+      if(em && em.imageId) await idbDeleteImage(em.imageId);
+      emojiLibrary.splice(idx,1);
+      saveAll(); renderAdmin(); renderEmojiGrid();
+    }));
+  }
+  renderAdmin();
+  document.getElementById('manageEmojiModal').classList.add('active');
+}
+document.getElementById('addEmojiBatchBtn')?.addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file'; input.multiple = true; input.accept = 'image/*';
+  input.onchange = async e => {
+    const files = Array.from(e.target.files);
+    let added = 0;
+    for(const file of files){
+      try{
+        const compressed = await compressImage(file, 512, 0.8);
+        const imgId = 'emoji_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
+        await idbSaveImage(imgId, compressed);
+        imageCache.set(imgId, compressed);
+        emojiLibrary.push({ id: generateId(), name: file.name.split('.')[0].slice(0,10), imageId: imgId });
+        added++;
+      }catch(err){ console.warn("压缩失败", err); }
+    }
+    saveAll(); renderEmojiGrid();
+    if(document.getElementById('manageEmojiModal').classList.contains('active')) openEmojiManager();
+    alert(`添加 ${added} 个表情`);
+  };
+  input.click();
+});
+
+/* =========================================================
+   主题
+   ========================================================= */
+function openThemeModal(){ document.getElementById('themeModal').classList.add('active'); updateStorageInfo(); }
+function closeThemeModal(){ document.getElementById('themeModal').classList.remove('active'); }
+function initThemeControls(){
+  const r = document.getElementById('colorR'), g = document.getElementById('colorG'), b = document.getElementById('colorB');
+  const picker = document.getElementById('colorPicker');
+  function updFromNumbers(){
+    themeColor = { r: clamp(r.value), g: clamp(g.value), b: clamp(b.value) };
+    applyTheme(); saveTheme();
+  }
+  r.addEventListener('input', updFromNumbers);
+  g.addEventListener('input', updFromNumbers);
+  b.addEventListener('input', updFromNumbers);
+  picker.addEventListener('input', () => {
+    const rgb = hexToRgb(picker.value);
+    if(rgb){ themeColor = rgb; applyTheme(); saveTheme(); }
+  });
+  document.getElementById('bgImageUpload').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const compressed = await compressImage(file, 1400, 0.82);
+      if(bgImageId) await idbDeleteImage(bgImageId);
+      const newId = 'bg_' + Date.now();
+      await idbSaveImage(newId, compressed);
+      imageCache.set(newId, compressed);
+      bgImageId = newId;
+      applyTheme(); saveTheme(); updateStorageInfo();
+    }catch(err){ alert("图片处理失败"); }
+  });
+  document.getElementById('resetBgBtn').addEventListener('click', async () => {
+    if(bgImageId){ await idbDeleteImage(bgImageId); imageCache.delete(bgImageId); }
+    bgImageId = null; applyTheme(); saveTheme();
+    document.getElementById('bgImageUpload').value = '';
+    updateStorageInfo();
+  });
+}
+
+/* =========================================================
+   角色
+   ========================================================= */
+function switchRole(roleId){
+  if(currentRoleId === roleId){ closeDrawer(); return; }
+  currentRoleId = roleId;
+  saveAll(); updateTopBar(); renderChat(); renderRoleListAndTodo(); closeDrawer();
+}
+function renderRoleListAndTodo(){
+  const container = document.getElementById('roleListContainer');
+  if(!container) return;
+  container.innerHTML = '';
+  roles.forEach(role => {
+    const activeClass = (role.id === currentRoleId) ? 'active' : '';
+    const div = document.createElement('div');
+    div.className = `role-card ${activeClass}`;
+    div.innerHTML = `<div style="font-size:28px;">${role.avatar||'🌸'}</div><div style="flex:1;"><strong>${escapeHtml(role.name)}</strong><br><span style="font-size:10px;color:#b68098;">${escapeHtml(role.description?.slice(0,20))}</span></div><div><button class="edit-role-btn" data-id="${role.id}">✏️</button><button class="del-role-btn" data-id="${role.id}">🗑️</button></div>`;
+    div.addEventListener('click', e => { if(!e.target.classList.contains('edit-role-btn') && !e.target.classList.contains('del-role-btn')) switchRole(role.id); });
+    container.appendChild(div);
+  });
+  container.querySelectorAll('.edit-role-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); openRoleEdit(btn.dataset.id); }));
+  container.querySelectorAll('.del-role-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); deleteRoleById(btn.dataset.id); }));
+  const curRole = getCurrentRole();
+  const todoContainer = document.getElementById('todoListContainer');
+  if(curRole && curRole.todoList.length){
+    todoContainer.innerHTML = curRole.todoList.map((todo, idx) => `<div class="todo-item"><div><input type="checkbox" ${todo.completed?'checked':''} data-idx="${idx}"><span style="${todo.completed?'text-decoration:line-through;':''}">${escapeHtml(todo.time?`[${todo.time}] `:``)}${escapeHtml(todo.task)} (${todo.people})</span></div><button class="tiny-btn del-todo" data-idx="${idx}">🗑️</button></div>`).join('');
+    todoContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener('change', e => { const idx = cb.dataset.idx; curRole.todoList[idx].completed = cb.checked; saveAll(); renderRoleListAndTodo(); }));
+    todoContainer.querySelectorAll('.del-todo').forEach(btn => btn.addEventListener('click', e => { const idx = btn.dataset.idx; curRole.todoList.splice(idx,1); saveAll(); renderRoleListAndTodo(); }));
+  } else {
+    todoContainer.innerHTML = '<div class="empty-tip">🌟 暂无待办</div>';
+  }
+}
+function openRoleEdit(id){
+  window.editingRoleId = id;
+  const r = roles.find(x=>x.id===id);
+  document.getElementById('editRoleName').value = r.name;
+  document.getElementById('editRoleDesc').value = r.description || '';
+  document.getElementById('editRoleAvatar').value = r.avatar || '🌸';
+  document.getElementById('roleDescFileInfo').innerText = '';
+  document.getElementById('roleEditModal').classList.add('active');
+}
+function saveRoleEditModal(){
+  const role = roles.find(r=>r.id===window.editingRoleId);
+  if(role){
+    role.name = document.getElementById('editRoleName').value.trim();
+    role.description = document.getElementById('editRoleDesc').value.trim();
+    role.avatar = document.getElementById('editRoleAvatar').value.trim() || '🌸';
+    saveAll(); renderRoleListAndTodo();
+    if(currentRoleId===role.id) updateTopBar();
+  }
+  closeRoleEditModal();
+}
+function closeRoleEditModal(){ document.getElementById('roleEditModal').classList.remove('active'); }
+async function deleteRoleById(id){
+  if(roles.length <= 1) return;
+  if(!confirm('删除该角色？聊天记录和图片将一并删除。')) return;
+  const role = roles.find(r => r.id === id);
+  if(role){
+    for(const msg of role.messages){
+      if(msg.type === 'image' && msg.imageId){
+        await idbDeleteImage(msg.imageId);
+        imageCache.delete(msg.imageId);
+      }
+    }
+  }
+  roles = roles.filter(r=>r.id !== id);
+  if(currentRoleId === id) currentRoleId = roles[0].id;
+  saveAll(); renderRoleListAndTodo(); renderChat(); updateTopBar();
+}
+function addNewRole(){
+  roles.push({ id: generateId(), name: "新伙伴", avatar: "🌸", description: "神秘朋友", messages: [], memories: [], todoList: [], lastSummaryCount: 0 });
+  saveAll(); renderRoleListAndTodo();
+}
+function closeDrawer(){ document.getElementById('drawerOverlay').classList.remove('open'); document.getElementById('drawer').classList.remove('open'); }
+function openDrawer(){ document.getElementById('drawerOverlay').classList.add('open'); document.getElementById('drawer').classList.add('open'); renderRoleListAndTodo(); }
+
+/* =========================================================
+   记忆
+   ========================================================= */
+function renderMemoryModal(){
+  const role = getCurrentRole(); if(!role) return;
+  document.getElementById('memoryRoleName').innerText = role.name;
+  const con = document.getElementById('memoryListContainer');
+  if(!role.memories.length){ con.innerHTML = '<div class="empty-tip">✨ 暂无记忆</div>'; return; }
+  let html = '';
+  role.memories.forEach((mem, idx) => {
+    const vecBadge = (mem.embedding && Array.isArray(mem.embedding)) ? '<span class="vec-badge">向量✓</span>' : '';
+    html += `<div class="memory-item"><div>${escapeHtml(mem.content)}${vecBadge}</div><div style="text-align:right;margin-top:4px;"><button class="edit-mem tiny-btn" data-idx="${idx}">✏️</button><button class="del-mem tiny-btn" data-idx="${idx}">🗑️</button></div></div>`;
+  });
+  con.innerHTML = html;
+  con.querySelectorAll('.edit-mem').forEach(btn => btn.addEventListener('click', () => {
+    const idx = parseInt(btn.dataset.idx);
+    let v = prompt("编辑记忆", role.memories[idx].content);
+    if(v !== null && v.trim()){
+      role.memories[idx].content = v.trim();
+      delete role.memories[idx].embedding;
+      saveAll(); renderMemoryModal();
+    }
+  }));
+  con.querySelectorAll('.del-mem').forEach(btn => btn.addEventListener('click', () => { role.memories.splice(parseInt(btn.dataset.idx),1); saveAll(); renderMemoryModal(); }));
+}
+function addMemoryToCurrent(content){
+  const role = getCurrentRole();
+  if(!role || !content.trim()) return;
+  role.memories.push({ id: Date.now(), content: content.trim(), timestamp: new Date().toISOString() });
+  saveAll();
+  if(document.getElementById('memoryModal').classList.contains('active')) renderMemoryModal();
+}
+async function manualSummarize(){
+  const role = getCurrentRole();
+  if(!role || !role.messages.length){ alert("无对话"); return; }
+  const recent = role.messages.slice(-18);
+  let conv = recent.map(m => `${m.role}:${m.type==='text'?m.content:(m.caption||'')}`).join('\n');
+  const prompt = `总结核心记忆:${conv}`;
+  try{
+    const data = await safeFetchJSON(apiConfig.url, { method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiConfig.key}`}, body:JSON.stringify({ model: apiConfig.model, messages:[{role:"user",content:prompt}], temperature:0.5 }) });
+    let sum = extractReplyContent(data) || "回忆生成失败";
+    role.memories.push({ id: Date.now(), content: sum, timestamp: new Date().toISOString() });
+    saveAll();
+    if(document.getElementById('memoryModal').classList.contains('active')) renderMemoryModal();
+    alert("已总结记忆");
+  } catch(e){ alert("总结失败: " + e.message); }
+}
+
+/* =========================================================
+   向量设置
+   ========================================================= */
+function openVectorModal(){
+  document.getElementById('vectorStatus').innerText = '';
+  document.getElementById('vectorModal').classList.add('active');
+}
+async function rebuildAllVectors(){
+  const statusDiv = document.getElementById('vectorStatus');
+  if(!vectorConfig.apiKey){ statusDiv.innerText = "❌ 请先填写 API Key 并保存"; return; }
+  const role = getCurrentRole();
+  if(!role || !role.memories.length){ statusDiv.innerText = "当前角色没有记忆"; return; }
+  statusDiv.innerText = `⏳ 正在为 ${role.memories.length} 条记忆生成向量...`;
+  try{
+    role.memories.forEach(m => delete m.embedding);
+    await ensureMemoryEmbeddings(role);
+    saveAll();
+    statusDiv.innerText = `✅ 完成！已生成 ${role.memories.length} 条向量记忆`;
+  }catch(e){ statusDiv.innerText = `❌ 失败: ${e.message}`; }
+}
+
+/* =========================================================
+   红包、图片、事件绑定
+   ========================================================= */
+document.getElementById('sendRedpacketBtn').onclick = () => {
+  const amount = document.getElementById('redpacketAmount').value;
+  const wish = document.getElementById('redpacketWish').value;
+  if(amount && parseFloat(amount) > 0) sendMessageDirect('', 'redpacket', { amount, wish: wish || "甜甜蜜蜜" });
+  else alert("请输入金额");
+  document.getElementById('redpacketModal').classList.remove('active');
+};
+document.getElementById('cancelRedpacketModal').onclick = () => document.getElementById('redpacketModal').classList.remove('active');
+document.getElementById('redpacketBtn').onclick = () => document.getElementById('redpacketModal').classList.add('active');
+
+document.getElementById('sendImageBtn').onclick = () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const compressed = await compressImage(file, 1024, 0.85);
+      const caption = prompt("给这张图片加点描述吧（可选，直接确定即可发送）：") || "";
+      sendMessageDirect('', 'image', { imageData: compressed, caption: caption });
+    }catch(err){ alert("图片处理失败：" + err.message); }
+  };
+  input.click();
+};
+
+document.getElementById('sendBtn').onclick = () => {
+  const v = document.getElementById('messageInput').value.trim();
+  if(v) sendMessageDirect(v, 'text');
+  document.getElementById('messageInput').value = '';
+  document.getElementById('messageInput').style.height = 'auto';
+};
+document.getElementById('messageInput').addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); document.getElementById('sendBtn').click(); }
+});
+document.getElementById('menuToggleBtn').onclick = openDrawer;
+document.getElementById('drawerOverlay').onclick = closeDrawer;
+document.getElementById('moreMenuBtn').onclick = () => document.getElementById('moreModal').classList.add('active');
+document.getElementById('closeMoreModal').onclick = () => document.getElementById('moreModal').classList.remove('active');
+document.getElementById('editMemoryBtn').onclick = () => { document.getElementById('moreModal').classList.remove('active'); renderMemoryModal(); document.getElementById('memoryModal').classList.add('active'); };
+document.getElementById('editUserPersonaBtn').onclick = () => {
+  document.getElementById('moreModal').classList.remove('active');
+  document.getElementById('userPersonaInput').value = globalUserPersona;
+  document.getElementById('userPersonaFileInfo').innerText = '';
+  document.getElementById('userPersonaModal').classList.add('active');
+};
+document.getElementById('saveUserPersonaBtn').onclick = () => { globalUserPersona = document.getElementById('userPersonaInput').value; saveAll(); document.getElementById('userPersonaModal').classList.remove('active'); alert("人设已更新"); };
+document.getElementById('closePersonaModal').onclick = () => document.getElementById('userPersonaModal').classList.remove('active');
+document.getElementById('closeMemoryModalBtn').onclick = () => document.getElementById('memoryModal').classList.remove('active');
+document.getElementById('addMemoryConfirmBtn').onclick = () => { addMemoryToCurrent(document.getElementById('newMemoryInput').value); document.getElementById('newMemoryInput').value = ''; };
+document.getElementById('aiSummarizeMemoryBtn').onclick = manualSummarize;
+document.getElementById('apiSettingsBtn').onclick = () => document.getElementById('apiModal').classList.add('active');
+document.getElementById('saveApiBtn').onclick = () => {
+  apiConfig.url = document.getElementById('apiUrl').value.trim();
+  apiConfig.key = document.getElementById('apiKey').value.trim();
+  apiConfig.model = document.getElementById('modelName').value.trim();
+  apiConfig.vision = document.getElementById('visionEnabledCheck').checked;
+  apiConfig.visionFormat = document.getElementById('visionFormat').value;
+  saveAll(); alert("API已保存"); document.getElementById('apiModal').classList.remove('active');
+};
+document.getElementById('closeApiBtn').onclick = () => document.getElementById('apiModal').classList.remove('active');
+document.getElementById('testApiBtn').onclick = testApiConnection;
+document.getElementById('addRoleBtn').onclick = addNewRole;
+document.getElementById('confirmRoleEditBtn').onclick = saveRoleEditModal;
+document.getElementById('cancelRoleEditBtn').onclick = closeRoleEditModal;
+document.getElementById('openTodoSettingsBtn').onclick = () => { document.getElementById('moreModal').classList.remove('active'); document.getElementById('summaryThresholdModal').classList.add('active'); };
+document.getElementById('saveThresholdBtn').onclick = () => { summaryThreshold = parseInt(document.getElementById('summaryThresholdInput').value) || 30; saveAll(); alert(`阈值已设为 ${summaryThreshold}`); document.getElementById('summaryThresholdModal').classList.remove('active'); };
+document.getElementById('closeThresholdModal').onclick = () => document.getElementById('summaryThresholdModal').classList.remove('active');
+document.getElementById('openEmojiDrawerBtn').onclick = () => { document.getElementById('emojiDrawerOverlay').classList.add('active'); renderEmojiGrid(); };
+document.getElementById('emojiDrawerOverlay').addEventListener('click', e => { if(e.target === document.getElementById('emojiDrawerOverlay')) document.getElementById('emojiDrawerOverlay').classList.remove('active'); });
+document.getElementById('openManageEmojiBtn').onclick = () => { document.getElementById('emojiDrawerOverlay').classList.remove('active'); openEmojiManager(); };
+document.getElementById('closeEmojiModal').onclick = () => document.getElementById('manageEmojiModal').classList.remove('active');
+document.getElementById('themeBtn').onclick = openThemeModal;
+document.getElementById('closeThemeModal').onclick = closeThemeModal;
+document.getElementById('exportCurrentBtn').onclick = () => { document.getElementById('moreModal').classList.remove('active'); exportCurrentRole(); };
+document.getElementById('exportAllBtn').onclick = () => { document.getElementById('moreModal').classList.remove('active'); exportAllRoles(); };
+document.getElementById('exportBackupBtn').onclick = () => { document.getElementById('moreModal').classList.remove('active'); exportFullBackup(); };
+document.getElementById('importBackupBtn').onclick = () => { document.getElementById('moreModal').classList.remove('active'); importBackup(); };
+document.getElementById('cleanOldImagesBtn').onclick = async () => {
+  document.getElementById('moreModal').classList.remove('active');
+  const days = prompt('清理多少天前的图片？(建议 30)', '30');
+  if(!days) return;
+  const d = parseInt(days);
+  if(!d || d < 1) return;
+  if(!confirm(`将删除 ${d} 天前的所有图片（含聊天图片、表情包）\n\n继续？`)) return;
+  try{
+    const deleted = await idbCleanOldImages(d);
+    // 清理失效引用
+    roles.forEach(role => {
+      role.messages = role.messages.filter(m => {
+        if(m.type === 'image' && m.imageId){
+          if(!imageCache.has(m.imageId)){
+            // 缓存里没有，说明已被删除
+            return false;
+          }
+        }
+        return true;
+      });
+    });
+    saveAll();
+    alert(`✅ 已清理 ${deleted} 张图片`);
+    renderChat(); updateStorageInfo();
+  }catch(e){ alert('清理失败：' + e.message); }
+};
+document.getElementById('closeImageViewBtn').onclick = () => document.getElementById('imageViewModal').classList.remove('active');
+document.getElementById('imageViewModal').addEventListener('click', e => { if(e.target === document.getElementById('imageViewModal')) document.getElementById('imageViewModal').classList.remove('active'); });
+document.getElementById('vectorMemorySettingsBtn').onclick = () => { document.getElementById('moreModal').classList.remove('active'); openVectorModal(); };
+document.getElementById('closeVectorBtn').onclick = () => document.getElementById('vectorModal').classList.remove('active');
+document.getElementById('vectorTopK').addEventListener('input', e => { document.getElementById('topKValue').innerText = e.target.value; });
+document.getElementById('saveVectorBtn').onclick = () => {
+  vectorConfig.enabled = document.getElementById('vectorEnabled').checked;
+  vectorConfig.apiKey = document.getElementById('vectorApiKey').value.trim();
+  vectorConfig.model = document.getElementById('vectorModel').value.trim() || "BAAI/bge-m3";
+  vectorConfig.topK = parseInt(document.getElementById('vectorTopK').value) || 3;
+  saveAll();
+  document.getElementById('vectorStatus').innerText = "✅ 已保存！";
+};
+document.getElementById('rebuildVectorsBtn').onclick = rebuildAllVectors;
+
+document.getElementById('uploadRoleDescBtn').onclick = () => pickTextFileAndApply('editRoleDesc', 'roleDescFileInfo');
+document.getElementById('uploadUserPersonaBtn').onclick = () => pickTextFileAndApply('userPersonaInput', 'userPersonaFileInfo');
+
+function closeEmojiDrawer(){ document.getElementById('emojiDrawerOverlay').classList.remove('active'); }
+
+/* =========================================================
+   启动
+   ========================================================= */
+(async function init(){
+  try{
+    // 1. 迁移 localStorage 里的图片到 IndexedDB
+    await migrateImagesToIDB();
+    // 2. 预加载所有图片到内存缓存
+    await preloadImages();
+    // 3. 加载数据
+    await loadAll();
+    initThemeControls();
+    // 4. 请求持久化 + 显示状态
+    await showPersistBanner();
+    // 5. 更新存储用量
+    await updateStorageInfo();
+  }catch(e){
+    console.error('初始化失败', e);
+    alert('初始化失败：' + e.message + '\n\n如果页面打不开，请到「数据救援」工具导出数据后清空。');
+  }
+})();
+</script>
+</body>
+</html>
