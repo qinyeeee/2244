@@ -892,7 +892,7 @@ async function sendMessageDirect(text, type='text', extra={}){
   try{
     const data = await safeFetchJSON(apiConfig.url, {
       method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiConfig.key}`},
-      body: JSON.stringify({ model: apiConfig.model, messages: apiMessages, temperature: 0.8, max_tokens: 1000 })
+      body: JSON.stringify({ model: apiConfig.model, messages: apiMessages, temperature: 0.8, max_tokens: 4000 })
     });
     let reply = extractReplyContent(data);
     if(!reply || reply.trim()==="") reply = "❌ 模型返回空内容。请检查 API 地址或更换模型。";
