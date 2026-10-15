@@ -237,6 +237,18 @@ input[type="color"]{padding:0;height:36px;border-radius:14px;cursor:pointer}
 
 <script>
 /* =========================================================
+   ★ 全局打字机状态（必须放在最顶部，用 var）
+   ========================================================= */
+var typingState = { active: false, roleId: null, msgIndex: -1, cancelled: false };
+function stopTyping(){
+  try{
+    typingState.active = false;
+    typingState.cancelled = true;
+    typingState.msgIndex = -1;
+  }catch(e){ console.warn('stopTyping err', e); }
+}
+
+/* =========================================================
    IndexedDB 图片存储层
    ========================================================= */
 const DB_NAME = 'sweetTownDB';
@@ -333,8 +345,8 @@ function getCachedImage(id){ return imageCache.get(id) || null; }
    迁移
    ========================================================= */
 async function migrateImagesToIDB(){
-  const ROLES_KEY = 'sweet_roles_v23';
-  const EMOJI_KEY = 'emojiLibrary_v20';
+  const ROLES_KEY = 'sweet_roles_v24';
+  const EMOJI_KEY = 'emojiLibrary_v21';
   let migrated = 0;
   const rolesRaw = localStorage.getItem(ROLES_KEY);
   if(rolesRaw){
@@ -428,8 +440,8 @@ async function showPersistBanner(){
 /* =========================================================
    全局
    ========================================================= */
-const ROLES_KEY = 'sweet_roles_v23';
-const EMOJI_KEY = 'emojiLibrary_v20';
+const ROLES_KEY = 'sweet_roles_v24';
+const EMOJI_KEY = 'emojiLibrary_v21';
 const PERSONA_KEY = 'sweet_userPersona';
 const API_KEY = 'sweet_api';
 const VECTOR_KEY = 'sweet_vector';
@@ -450,14 +462,6 @@ let contextLimit = 30;
 let emojiLibrary = [];
 let themeColor = { r: 255, g: 218, b: 229 };
 let bgImageId = null;
-
-/* 打字机状态：完全脱离数据 */
-let typingState = { active: false, roleId: null, msgIndex: -1, cancelled: false };
-function stopTyping(){
-  typingState.active = false;
-  typingState.cancelled = true;
-  typingState.msgIndex = -1;
-}
 
 function generateId(){ return Date.now() + '-' + Math.random().toString(36).substr(2,6); }
 const defaultRoles = [
@@ -625,7 +629,7 @@ function renderChat(){
     } else {
       if(!isUser){
         let displayText = msg.content;
-        const isTypingThis = typingState.active && typingState.roleId === role.id && typingState.msgIndex === i;
+        const isTypingThis = (typeof typingState !== 'undefined') && typingState.active && typingState.roleId === role.id && typingState.msgIndex === i;
         if(isTypingThis){
           displayText = msg.content.slice(0, typingState.displayLen || 0);
         }
@@ -668,13 +672,20 @@ function renderChat(){
 }
 
 /* =========================================================
-   ★ 打字机：只更新最后一个气泡，不重渲染整个聊天区（不闪屏）
+   ★ 打字机：只更新最后一个气泡（带防御检查）
    ========================================================= */
 async function typewriterVisual(role, msgIndex){
   const msg = role.messages[msgIndex];
   if(!msg || !msg.content) return;
   const fullText = msg.content;
   const totalLen = fullText.length;
+
+  // ★ 防御：确保 typingState 存在
+  if(typeof typingState === 'undefined'){
+    console.warn('typingState 未定义，跳过打字机');
+    renderChat();
+    return;
+  }
 
   typingState.active = true;
   typingState.roleId = role.id;
@@ -691,7 +702,7 @@ async function typewriterVisual(role, msgIndex){
     return;
   }
 
-  // 短文本直接显示（≤10字），不做打字
+  // 短文本直接显示
   if(totalLen <= 10){
     targetBubble.innerHTML = formatAssistantText(fullText);
     typingState.active = false;
@@ -702,7 +713,6 @@ async function typewriterVisual(role, msgIndex){
     return;
   }
 
-  // 自适应速度：总时长 0.8~3 秒
   const duration = Math.min(3000, Math.max(800, totalLen * 15));
   const chunkSize = Math.max(1, Math.ceil(totalLen / (duration / 16)));
   const interval = 16;
@@ -716,7 +726,6 @@ async function typewriterVisual(role, msgIndex){
     typingState.displayLen = Math.min(typingState.displayLen + chunkSize, totalLen);
     const partial = fullText.slice(0, typingState.displayLen);
 
-    // 只改这一个气泡，屏幕不闪
     targetBubble.innerHTML = formatAssistantText(partial) + '<span class="cursor-blink"></span>';
 
     if(nearBottom()){
@@ -807,14 +816,25 @@ async function generateAssistantResponse(role){
     let reply = extractReplyContent(data);
     if(!reply || reply.trim()==="") reply = "❌ 模型返回空内容。请检查 API 地址或更换模型。";
 
-    // ★ 数据先完整入队 + 保存
+    // 数据先完整入队 + 保存
     role.messages.push({ role:'assistant', type:'text', content: reply, timestamp: Date.now() });
     const newIdx = role.messages.length - 1;
     saveAll();
     renderChat();
 
-    // ★ 视觉：只操作最后一个气泡
-    await typewriterVisual(role, newIdx);
+    // ★ 打字机用独立 try-catch 包裹，即使出错也不影响消息
+    try{
+      await typewriterVisual(role, newIdx);
+    }catch(typingErr){
+      console.warn('打字机出错（不影响消息）：', typingErr);
+      // 强制显示完整内容
+      try{
+        const chatDiv = document.getElementById('chatArea');
+        const bubbles = chatDiv.querySelectorAll('.assistant-bubble');
+        const lastBubble = bubbles[bubbles.length - 1];
+        if(lastBubble) lastBubble.innerHTML = formatAssistantText(reply);
+      }catch(e2){}
+    }
 
     // 后处理
     extractTodoFromLastMessages(role);
@@ -1211,7 +1231,7 @@ function exportAllRoles(){
 async function exportFullBackup(){
   const allImages = await idbGetAll();
   const backup = {
-    version: 5,
+    version: 6,
     exportedAt: new Date().toISOString(),
     roles, globalUserPersona, apiConfig, vectorConfig, summaryThreshold, contextLimit, emojiLibrary, themeColor, bgImageId,
     images: allImages
