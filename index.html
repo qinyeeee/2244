@@ -333,8 +333,8 @@ function getCachedImage(id){ return imageCache.get(id) || null; }
    迁移
    ========================================================= */
 async function migrateImagesToIDB(){
-  const ROLES_KEY = 'sweet_roles_v20';
-  const EMOJI_KEY = 'emojiLibrary_v17';
+  const ROLES_KEY = 'sweet_roles_v21';
+  const EMOJI_KEY = 'emojiLibrary_v18';
   let migrated = 0;
   const rolesRaw = localStorage.getItem(ROLES_KEY);
   if(rolesRaw){
@@ -428,8 +428,8 @@ async function showPersistBanner(){
 /* =========================================================
    全局
    ========================================================= */
-const ROLES_KEY = 'sweet_roles_v20';
-const EMOJI_KEY = 'emojiLibrary_v17';
+const ROLES_KEY = 'sweet_roles_v21';
+const EMOJI_KEY = 'emojiLibrary_v18';
 const PERSONA_KEY = 'sweet_userPersona';
 const API_KEY = 'sweet_api';
 const VECTOR_KEY = 'sweet_vector';
@@ -465,7 +465,14 @@ async function loadAll(){
   const storedRoles = localStorage.getItem(ROLES_KEY);
   if(storedRoles){ try{ roles = JSON.parse(storedRoles); }catch(e){} }
   if(!roles || !roles.length) roles = JSON.parse(JSON.stringify(defaultRoles));
-  roles.forEach(r=>{ if(!r.messages) r.messages=[]; if(!r.memories) r.memories=[]; if(!r.todoList) r.todoList=[]; if(r.lastSummaryCount===undefined) r.lastSummaryCount=0; });
+  roles.forEach(r=>{
+    if(!r.messages) r.messages=[];
+    if(!r.memories) r.memories=[];
+    if(!r.todoList) r.todoList=[];
+    if(r.lastSummaryCount===undefined) r.lastSummaryCount=0;
+    // ★ 清理打字状态残留
+    r.messages.forEach(m => { delete m._typing; delete m._displayLen; });
+  });
   const storedCur = localStorage.getItem(CUR_ROLE_KEY);
   if(storedCur && roles.some(r=>r.id===storedCur)) currentRoleId = storedCur;
   else currentRoleId = roles[0]?.id || null;
@@ -559,7 +566,10 @@ function syncUIinputs(){
 }
 function saveAll(){
   try{
-    localStorage.setItem(ROLES_KEY, JSON.stringify(roles));
+    // ★ 清理临时打字字段后再保存，避免污染数据
+    const rolesClone = JSON.parse(JSON.stringify(roles));
+    rolesClone.forEach(r => r.messages.forEach(m => { delete m._typing; delete m._displayLen; }));
+    localStorage.setItem(ROLES_KEY, JSON.stringify(rolesClone));
     localStorage.setItem(CUR_ROLE_KEY, currentRoleId);
     localStorage.setItem(PERSONA_KEY, globalUserPersona);
     localStorage.setItem(API_KEY, JSON.stringify(apiConfig));
@@ -570,7 +580,7 @@ function saveAll(){
     saveTheme();
   }catch(e){
     console.error('保存失败：', e);
-    alert('⚠️ 存储空间不足，请到「✨ → 清理30天前的图片」释放空间');
+    // 静默失败，避免频繁弹窗打断打字
   }
 }
 function getCurrentRole(){ return roles.find(r=>r.id === currentRoleId); }
@@ -613,8 +623,17 @@ function renderChat(){
     } else if(msg.type === 'redpacket'){
       contentHtml = `<div class="redpacket-card">🧧 ${escapeHtml(msg.amount)}元<br>🎁 ${escapeHtml(msg.wish)}</div>`;
     } else {
-      if(!isUser) contentHtml = formatAssistantText(msg.content);
-      else contentHtml = escapeHtml(msg.content).replace(/\n/g,'<br>');
+      if(!isUser){
+        // ★ 打字机视觉：只影响显示，不影响数据
+        let displayText = msg.content;
+        if(msg._typing && typeof msg._displayLen === 'number'){
+          displayText = msg.content.slice(0, msg._displayLen);
+        }
+        contentHtml = formatAssistantText(displayText);
+        if(msg._typing) contentHtml += '<span class="cursor-blink"></span>';
+      } else {
+        contentHtml = escapeHtml(msg.content).replace(/\n/g,'<br>');
+      }
     }
     if(isUser){
       html += `<div class="message ${alignClass}"><div class="bubble ${bubbleClass}">${contentHtml}</div></div>`;
@@ -631,7 +650,6 @@ function renderChat(){
   if(isLoading) html += `<div class="message assistant-message"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
   chatDiv.innerHTML = html;
 
-  // 绑定事件
   chatDiv.querySelectorAll('.chat-img').forEach(img => {
     img.addEventListener('click', () => openImageView(parseInt(img.dataset.mid)));
   });
@@ -650,48 +668,31 @@ function renderChat(){
 }
 
 /* =========================================================
-   打字机效果
+   打字机视觉（只改显示，不动数据）
    ========================================================= */
-async function typewriterRender(msgIndex, fullText){
-  const role = getCurrentRole();
-  if(!role) return;
+async function typewriterVisual(role, msgIndex){
   const msg = role.messages[msgIndex];
   if(!msg) return;
+  const fullText = msg.content;
   typingCancelled = false;
-  msg.content = '';
-  renderChat();
+  msg._typing = true;
+  msg._displayLen = 0;
 
-  const chatDiv = document.getElementById('chatArea');
-  const assistantMsgs = chatDiv.querySelectorAll('.assistant-message');
-  const lastAssistant = assistantMsgs[assistantMsgs.length - 1];
-  if(!lastAssistant){
-    msg.content = fullText; renderChat(); return;
-  }
-  const bubble = lastAssistant.querySelector('.assistant-bubble');
-  if(!bubble){
-    msg.content = fullText; renderChat(); return;
-  }
+  const chunkSize = Math.max(1, Math.ceil(fullText.length / 200));
+  const interval = 16;
 
-  // 追加光标
-  bubble.innerHTML = '<span class="cursor-blink"></span>';
-
-  const chunkSize = Math.max(1, Math.ceil(fullText.length / 300)); // 长文加快速度
-  const interval = 18;
-  let currentLen = 0;
-
-  while(currentLen < fullText.length){
+  while(msg._displayLen < fullText.length){
     if(typingCancelled) break;
-    currentLen = Math.min(currentLen + chunkSize, fullText.length);
-    const partial = fullText.slice(0, currentLen);
-    bubble.innerHTML = formatAssistantText(partial) + '<span class="cursor-blink"></span>';
-    chatDiv.scrollTop = chatDiv.scrollHeight;
+    msg._displayLen = Math.min(msg._displayLen + chunkSize, fullText.length);
+    renderChat();
     await new Promise(r => setTimeout(r, interval));
   }
 
-  bubble.innerHTML = formatAssistantText(fullText);
-  msg.content = fullText;
-  saveAll();
+  msg._typing = false;
+  delete msg._displayLen;
   renderChat();
+  // 打字结束后保存一次（清理临时字段）
+  saveAll();
 }
 
 /* =========================================================
@@ -705,10 +706,8 @@ async function generateAssistantResponse(role){
   }
   isLoading = true; renderChat();
 
-  // 构建 system prompt
   let sysMsg;
   try{
-    // 用最近一条用户消息作为查询
     let lastUserContent = '';
     for(let i = role.messages.length - 1; i >= 0; i--){
       if(role.messages[i].role === 'user'){
@@ -722,7 +721,6 @@ async function generateAssistantResponse(role){
     sysMsg = `你正在扮演角色“${role.name}”，${role.description || "温柔可爱"}。用户人设: ${globalUserPersona}`;
   }
 
-  // ★ 上下文截断：只发送最近 contextLimit 条
   let historyToSend = role.messages;
   if(historyToSend.length > contextLimit){
     historyToSend = historyToSend.slice(-contextLimit);
@@ -766,14 +764,13 @@ async function generateAssistantResponse(role){
     let reply = extractReplyContent(data);
     if(!reply || reply.trim()==="") reply = "❌ 模型返回空内容。请检查 API 地址或更换模型。";
 
-    // 添加占位 assistant 消息
-    role.messages.push({ role:'assistant', type:'text', content: '', timestamp: Date.now() });
+    // ★★★ 关键改动：先 push 完整内容 + 保存，再打字机 ★★★
+    role.messages.push({ role:'assistant', type:'text', content: reply, timestamp: Date.now() });
     const newIdx = role.messages.length - 1;
-    saveAll();
-    renderChat();
+    saveAll();  // 数据已经完整了！
 
-    // 打字机
-    await typewriterRender(newIdx, reply);
+    // 视觉打字（如果中途退出，数据也是完整的）
+    await typewriterVisual(role, newIdx);
 
     // 后处理
     await extractTodoFromLastMessages(role);
@@ -796,7 +793,7 @@ async function sendMessageDirect(text, type='text', extra={}){
   if(isLoading) return;
   const role = getCurrentRole();
   if(!role){ alert("未找到当前角色"); return; }
-  typingCancelled = true;  // 打断上一条打字
+  typingCancelled = true;
 
   let userMsg = { role:'user', type, content: type==='text'?text:(extra.caption||extra.wish||''), timestamp: Date.now() };
   if(type === 'image'){
@@ -809,13 +806,14 @@ async function sendMessageDirect(text, type='text', extra={}){
   }
   if(type === 'redpacket'){ userMsg.amount = extra.amount; userMsg.wish = extra.wish; }
   role.messages.push(userMsg);
-  saveAll(); renderChat();
+  saveAll();  // ★ 立即保存用户消息
+  renderChat();
 
   await generateAssistantResponse(role);
 }
 
 /* =========================================================
-   重新生成
+   重新生成 / 编辑 / 删除
    ========================================================= */
 async function regenerateFrom(msgIndex){
   if(isLoading){ alert('正在生成中，请稍候'); return; }
@@ -824,9 +822,6 @@ async function regenerateFrom(msgIndex){
   if(!confirm('🔄 撤回这条 AI 回复并重新生成？')) return;
   typingCancelled = true;
 
-  // 删除从 msgIndex 开始的所有 assistant 消息（通常只有一条）
-  // 但为了安全，删掉这一条及其后面的所有消息（包含可能的后续对话）
-  // 如果 msgIndex 不是最后一条 assistant，需要用户确认
   const isLast = (() => {
     for(let i = role.messages.length - 1; i >= 0; i--){
       if(role.messages[i].role === 'assistant') return i === msgIndex;
@@ -841,19 +836,9 @@ async function regenerateFrom(msgIndex){
     role.messages.splice(msgIndex, 1);
   }
 
-  // 确保最后一条是用户消息
-  if(role.messages.length && role.messages[role.messages.length - 1].role !== 'user'){
-    // 如果最后一条还是 assistant，说明用户没发新消息，直接删除
-    // 但我们已经在上面处理了
-  }
-
   saveAll(); renderChat();
   await generateAssistantResponse(role);
 }
-
-/* =========================================================
-   编辑 / 删除
-   ========================================================= */
 async function editAssistantMessage(msgIndex){
   if(isLoading){ alert('正在生成中，请稍候'); return; }
   const role = getCurrentRole();
@@ -931,7 +916,7 @@ function openImageView(msgIndex){
 }
 
 /* =========================================================
-   工具：压缩图片、读文件、安全请求
+   工具
    ========================================================= */
 function compressImage(file, maxSize = 1024, quality = 0.82){
   return new Promise((resolve, reject) => {
@@ -1182,7 +1167,7 @@ function exportAllRoles(){
 async function exportFullBackup(){
   const allImages = await idbGetAll();
   const backup = {
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     roles, globalUserPersona, apiConfig, vectorConfig, summaryThreshold, contextLimit, emojiLibrary, themeColor, bgImageId,
     images: allImages
@@ -1627,6 +1612,17 @@ document.getElementById('rebuildVectorsBtn').onclick = rebuildAllVectors;
 document.getElementById('uploadRoleDescBtn').onclick = () => pickTextFileAndApply('editRoleDesc', 'roleDescFileInfo');
 document.getElementById('uploadUserPersonaBtn').onclick = () => pickTextFileAndApply('userPersonaInput', 'userPersonaFileInfo');
 function closeEmojiDrawer(){ document.getElementById('emojiDrawerOverlay').classList.remove('active'); }
+
+/* =========================================================
+   ★ 关键保险：页面隐藏/卸载时强制保存
+   ========================================================= */
+window.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'hidden'){
+    saveAll();
+  }
+});
+window.addEventListener('pagehide', () => { saveAll(); });
+window.addEventListener('beforeunload', () => { saveAll(); });
 
 /* =========================================================
    启动
