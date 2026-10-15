@@ -333,8 +333,8 @@ function getCachedImage(id){ return imageCache.get(id) || null; }
    迁移
    ========================================================= */
 async function migrateImagesToIDB(){
-  const ROLES_KEY = 'sweet_roles_v21';
-  const EMOJI_KEY = 'emojiLibrary_v18';
+  const ROLES_KEY = 'sweet_roles_v23';
+  const EMOJI_KEY = 'emojiLibrary_v20';
   let migrated = 0;
   const rolesRaw = localStorage.getItem(ROLES_KEY);
   if(rolesRaw){
@@ -428,8 +428,8 @@ async function showPersistBanner(){
 /* =========================================================
    全局
    ========================================================= */
-const ROLES_KEY = 'sweet_roles_v21';
-const EMOJI_KEY = 'emojiLibrary_v18';
+const ROLES_KEY = 'sweet_roles_v23';
+const EMOJI_KEY = 'emojiLibrary_v20';
 const PERSONA_KEY = 'sweet_userPersona';
 const API_KEY = 'sweet_api';
 const VECTOR_KEY = 'sweet_vector';
@@ -450,7 +450,14 @@ let contextLimit = 30;
 let emojiLibrary = [];
 let themeColor = { r: 255, g: 218, b: 229 };
 let bgImageId = null;
-let typingCancelled = false;
+
+/* 打字机状态：完全脱离数据 */
+let typingState = { active: false, roleId: null, msgIndex: -1, cancelled: false };
+function stopTyping(){
+  typingState.active = false;
+  typingState.cancelled = true;
+  typingState.msgIndex = -1;
+}
 
 function generateId(){ return Date.now() + '-' + Math.random().toString(36).substr(2,6); }
 const defaultRoles = [
@@ -470,7 +477,6 @@ async function loadAll(){
     if(!r.memories) r.memories=[];
     if(!r.todoList) r.todoList=[];
     if(r.lastSummaryCount===undefined) r.lastSummaryCount=0;
-    // ★ 清理打字状态残留
     r.messages.forEach(m => { delete m._typing; delete m._displayLen; });
   });
   const storedCur = localStorage.getItem(CUR_ROLE_KEY);
@@ -566,10 +572,7 @@ function syncUIinputs(){
 }
 function saveAll(){
   try{
-    // ★ 清理临时打字字段后再保存，避免污染数据
-    const rolesClone = JSON.parse(JSON.stringify(roles));
-    rolesClone.forEach(r => r.messages.forEach(m => { delete m._typing; delete m._displayLen; }));
-    localStorage.setItem(ROLES_KEY, JSON.stringify(rolesClone));
+    localStorage.setItem(ROLES_KEY, JSON.stringify(roles));
     localStorage.setItem(CUR_ROLE_KEY, currentRoleId);
     localStorage.setItem(PERSONA_KEY, globalUserPersona);
     localStorage.setItem(API_KEY, JSON.stringify(apiConfig));
@@ -578,10 +581,7 @@ function saveAll(){
     localStorage.setItem(CONTEXT_LIMIT_KEY, contextLimit);
     localStorage.setItem(EMOJI_KEY, JSON.stringify(emojiLibrary));
     saveTheme();
-  }catch(e){
-    console.error('保存失败：', e);
-    // 静默失败，避免频繁弹窗打断打字
-  }
+  }catch(e){ console.error('保存失败：', e); }
 }
 function getCurrentRole(){ return roles.find(r=>r.id === currentRoleId); }
 function updateTopBar(){ const r = getCurrentRole(); if(r){ document.getElementById('curRoleAvatar').innerText = r.avatar || '🌸'; document.getElementById('curRoleName').innerText = r.name; } }
@@ -624,13 +624,13 @@ function renderChat(){
       contentHtml = `<div class="redpacket-card">🧧 ${escapeHtml(msg.amount)}元<br>🎁 ${escapeHtml(msg.wish)}</div>`;
     } else {
       if(!isUser){
-        // ★ 打字机视觉：只影响显示，不影响数据
         let displayText = msg.content;
-        if(msg._typing && typeof msg._displayLen === 'number'){
-          displayText = msg.content.slice(0, msg._displayLen);
+        const isTypingThis = typingState.active && typingState.roleId === role.id && typingState.msgIndex === i;
+        if(isTypingThis){
+          displayText = msg.content.slice(0, typingState.displayLen || 0);
         }
         contentHtml = formatAssistantText(displayText);
-        if(msg._typing) contentHtml += '<span class="cursor-blink"></span>';
+        if(isTypingThis) contentHtml += '<span class="cursor-blink"></span>';
       } else {
         contentHtml = escapeHtml(msg.content).replace(/\n/g,'<br>');
       }
@@ -668,7 +668,7 @@ function renderChat(){
 }
 
 /* =========================================================
-   打字机（只更新最后一条气泡，不整屏重渲染）
+   ★ 打字机：只更新最后一个气泡，不重渲染整个聊天区（不闪屏）
    ========================================================= */
 async function typewriterVisual(role, msgIndex){
   const msg = role.messages[msgIndex];
@@ -682,7 +682,6 @@ async function typewriterVisual(role, msgIndex){
   typingState.displayLen = 0;
   typingState.cancelled = false;
 
-  // 找到最后一条 assistant 气泡，直接操作它，不重渲染整个聊天区
   const chatDiv = document.getElementById('chatArea');
   let bubbles = chatDiv.querySelectorAll('.assistant-bubble');
   let targetBubble = bubbles[bubbles.length - 1];
@@ -692,7 +691,7 @@ async function typewriterVisual(role, msgIndex){
     return;
   }
 
-  // 短文本直接显示，不做打字（≤10字）
+  // 短文本直接显示（≤10字），不做打字
   if(totalLen <= 10){
     targetBubble.innerHTML = formatAssistantText(fullText);
     typingState.active = false;
@@ -703,48 +702,43 @@ async function typewriterVisual(role, msgIndex){
     return;
   }
 
-  // 根据文本长度自适应速度（长文快，短文慢，总时长约 1~3 秒）
+  // 自适应速度：总时长 0.8~3 秒
   const duration = Math.min(3000, Math.max(800, totalLen * 15));
   const chunkSize = Math.max(1, Math.ceil(totalLen / (duration / 16)));
   const interval = 16;
 
-  const nearBottom = () => {
-    return (chatDiv.scrollHeight - chatDiv.scrollTop - chatDiv.clientHeight) < 120;
-  };
+  const nearBottom = () => (chatDiv.scrollHeight - chatDiv.scrollTop - chatDiv.clientHeight) < 120;
 
   while(typingState.displayLen < totalLen){
     if(typingState.cancelled) break;
-    // 页面不可见时直接跳到完成，避免后台继续跑
     if(document.visibilityState === 'hidden') break;
 
     typingState.displayLen = Math.min(typingState.displayLen + chunkSize, totalLen);
     const partial = fullText.slice(0, typingState.displayLen);
 
-    // ★ 只更新这一个气泡的 innerHTML，不触发整个聊天区重排
+    // 只改这一个气泡，屏幕不闪
     targetBubble.innerHTML = formatAssistantText(partial) + '<span class="cursor-blink"></span>';
 
-    // 只有在接近底部时才自动滚动，避免抖动
     if(nearBottom()){
       chatDiv.scrollTop = chatDiv.scrollHeight;
     }
-
     await new Promise(r => setTimeout(r, interval));
   }
 
-  // 结束：显示完整内容，清状态
   typingState.active = false;
   typingState.roleId = null;
   typingState.msgIndex = -1;
   typingState.displayLen = 0;
 
-  // 重新获取一次（防止过程中 DOM 被其他操作替换过）
   bubbles = chatDiv.querySelectorAll('.assistant-bubble');
   targetBubble = bubbles[bubbles.length - 1];
   if(targetBubble){
     targetBubble.innerHTML = formatAssistantText(fullText);
   }
   chatDiv.scrollTop = chatDiv.scrollHeight;
-}/* =========================================================
+}
+
+/* =========================================================
    核心：生成 AI 回复
    ========================================================= */
 async function generateAssistantResponse(role){
@@ -813,17 +807,18 @@ async function generateAssistantResponse(role){
     let reply = extractReplyContent(data);
     if(!reply || reply.trim()==="") reply = "❌ 模型返回空内容。请检查 API 地址或更换模型。";
 
-    // ★★★ 关键改动：先 push 完整内容 + 保存，再打字机 ★★★
+    // ★ 数据先完整入队 + 保存
     role.messages.push({ role:'assistant', type:'text', content: reply, timestamp: Date.now() });
     const newIdx = role.messages.length - 1;
-    saveAll();  // 数据已经完整了！
+    saveAll();
+    renderChat();
 
-    // 视觉打字（如果中途退出，数据也是完整的）
+    // ★ 视觉：只操作最后一个气泡
     await typewriterVisual(role, newIdx);
 
     // 后处理
-    await extractTodoFromLastMessages(role);
-    await autoSummarizeIfNeeded(role);
+    extractTodoFromLastMessages(role);
+    autoSummarizeIfNeeded(role);
   } catch(err){
     let errMsg = err.message;
     if(errMsg.includes('base64') || errMsg.includes('decode')){
@@ -842,7 +837,7 @@ async function sendMessageDirect(text, type='text', extra={}){
   if(isLoading) return;
   const role = getCurrentRole();
   if(!role){ alert("未找到当前角色"); return; }
-  typingCancelled = true;
+  stopTyping();
 
   let userMsg = { role:'user', type, content: type==='text'?text:(extra.caption||extra.wish||''), timestamp: Date.now() };
   if(type === 'image'){
@@ -855,7 +850,7 @@ async function sendMessageDirect(text, type='text', extra={}){
   }
   if(type === 'redpacket'){ userMsg.amount = extra.amount; userMsg.wish = extra.wish; }
   role.messages.push(userMsg);
-  saveAll();  // ★ 立即保存用户消息
+  saveAll();
   renderChat();
 
   await generateAssistantResponse(role);
@@ -869,7 +864,7 @@ async function regenerateFrom(msgIndex){
   const role = getCurrentRole();
   if(!role) return;
   if(!confirm('🔄 撤回这条 AI 回复并重新生成？')) return;
-  typingCancelled = true;
+  stopTyping();
 
   const isLast = (() => {
     for(let i = role.messages.length - 1; i >= 0; i--){
@@ -1216,7 +1211,7 @@ function exportAllRoles(){
 async function exportFullBackup(){
   const allImages = await idbGetAll();
   const backup = {
-    version: 3,
+    version: 5,
     exportedAt: new Date().toISOString(),
     roles, globalUserPersona, apiConfig, vectorConfig, summaryThreshold, contextLimit, emojiLibrary, themeColor, bgImageId,
     images: allImages
@@ -1388,7 +1383,7 @@ function initThemeControls(){
    ========================================================= */
 function switchRole(roleId){
   if(currentRoleId === roleId){ closeDrawer(); return; }
-  typingCancelled = true;
+  stopTyping();
   currentRoleId = roleId;
   saveAll(); updateTopBar(); renderChat(); renderRoleListAndTodo(); closeDrawer();
 }
@@ -1662,13 +1657,9 @@ document.getElementById('uploadRoleDescBtn').onclick = () => pickTextFileAndAppl
 document.getElementById('uploadUserPersonaBtn').onclick = () => pickTextFileAndApply('userPersonaInput', 'userPersonaFileInfo');
 function closeEmojiDrawer(){ document.getElementById('emojiDrawerOverlay').classList.remove('active'); }
 
-/* =========================================================
-   ★ 关键保险：页面隐藏/卸载时强制保存
-   ========================================================= */
+/* 页面隐藏时保存 */
 window.addEventListener('visibilitychange', () => {
-  if(document.visibilityState === 'hidden'){
-    saveAll();
-  }
+  if(document.visibilityState === 'hidden'){ saveAll(); }
 });
 window.addEventListener('pagehide', () => { saveAll(); });
 window.addEventListener('beforeunload', () => { saveAll(); });
