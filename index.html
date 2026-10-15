@@ -12,12 +12,9 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{background:#fceef2;font-family:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;height:100vh;height:100dvh;width:100vw;overflow:hidden;color:#3a2c33}
 .app{height:100%;width:100%;background:#fff7f9;display:flex;flex-direction:column;position:relative}
-
-/* 持久化状态提示 */
 .persist-banner{background:linear-gradient(90deg,#ffe0e8,#fff0f4);border-bottom:1px solid #ffd4e0;padding:8px 12px;font-size:12px;color:#a9557a;display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;z-index:20}
 .persist-banner.ok{background:linear-gradient(90deg,#e0f5ea,#f0fbf5);border-bottom-color:#c0e5d4;color:#2c6b55}
 .persist-banner button{background:#fff;border:1px solid #ffd4e0;border-radius:20px;padding:4px 10px;font-size:11px;cursor:pointer;color:#bc6f8f}
-
 .top-bar{background:rgba(255,245,245,.94);backdrop-filter:blur(12px);padding:6px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffe2ea;z-index:10}
 .left-actions,.right-actions{display:flex;gap:6px}
 .icon-btn{background:#ffeef2;border:none;border-radius:40px;width:34px;height:34px;font-size:1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#bc6f8f}
@@ -25,7 +22,8 @@ body{background:#fceef2;font-family:'Inter',-apple-system,'Segoe UI',Roboto,sans
 .chat-area{flex:1;overflow-y:auto;padding:14px 10px;display:flex;flex-direction:column;gap:12px;background-size:cover;background-position:center;background-repeat:no-repeat;transition:background-image .2s}
 .message{display:flex;max-width:85%;animation:fadeSlide .2s ease}
 .user-message{align-self:flex-end;justify-content:flex-end}
-.assistant-message{align-self:flex-start}
+.assistant-message{align-self:flex-start;flex-direction:column;align-items:flex-start}
+.assistant-msg-wrap{display:flex;flex-direction:column;align-items:flex-start;max-width:100%}
 .bubble{padding:9px 13px;border-radius:22px;line-height:1.45;font-size:.88rem;word-break:break-word}
 .user-bubble{background:#ffdae5;color:#663b4a;border-bottom-right-radius:6px}
 .assistant-bubble{background:#fff;border:1px solid #ffe2ea;color:#4c3440;border-bottom-left-radius:6px}
@@ -36,6 +34,12 @@ body{background:#fceef2;font-family:'Inter',-apple-system,'Segoe UI',Roboto,sans
 .redpacket-card{background:#ffefd1;border-radius:18px;padding:7px 11px;border-left:4px solid #ff9b6e}
 .typing-indicator{background:#fff;border-radius:24px;padding:7px 13px;display:inline-flex;gap:5px}
 @keyframes fadeSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.assistant-msg-actions{display:flex;gap:4px;margin-top:4px;padding-left:2px}
+.assistant-msg-actions button{background:#fff5f8;border:1px solid #ffe2ea;border-radius:14px;padding:2px 8px;font-size:11px;cursor:pointer;color:#a97086;opacity:.75;transition:.15s}
+.assistant-msg-actions button:hover{opacity:1;background:#ffeef3}
+.assistant-msg-actions button:active{transform:scale(.94)}
+.cursor-blink{display:inline-block;width:6px;height:14px;background:#bc6f8f;margin-left:2px;vertical-align:middle;animation:blink 0.8s infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
 .input-container{background:#ffffffdd;backdrop-filter:blur(12px);border-top:1px solid #ffecf0;padding:6px 10px calc(10px + env(safe-area-inset-bottom,0px))}
 .input-row{display:flex;gap:6px;align-items:flex-end}
 .input-wrapper{flex:1;background:#fff3f6;border-radius:28px;padding:4px 12px;border:1px solid #ffe2e9}
@@ -148,6 +152,7 @@ input[type="color"]{padding:0;height:36px;border-radius:14px;cursor:pointer}
 <button class="tiny-btn" id="editMemoryBtn" style="width:100%;margin-top:8px;">📖 编辑角色记忆</button>
 <button class="tiny-btn" id="vectorMemorySettingsBtn" style="width:100%;margin-top:8px;">🧠 向量记忆设置</button>
 <button class="tiny-btn" id="openTodoSettingsBtn" style="width:100%;margin-top:8px;">⏲️ 自动总结阈值</button>
+<button class="tiny-btn" id="openContextSettingsBtn" style="width:100%;margin-top:8px;">📏 上下文条数设置</button>
 <button class="tiny-btn" id="exportCurrentBtn" style="width:100%;margin-top:8px;">💾 导出当前角色对话</button>
 <button class="tiny-btn" id="exportAllBtn" style="width:100%;margin-top:8px;">📚 导出全部角色对话</button>
 <button class="tiny-btn" id="exportBackupBtn" style="width:100%;margin-top:8px;">🗄️ 导出完整备份 (JSON)</button>
@@ -203,12 +208,23 @@ input[type="color"]{padding:0;height:36px;border-radius:14px;cursor:pointer}
 <option value="dataurl">data URL（OpenAI 官方）</option>
 </select>
 </div>
+<div style="margin:8px 0;">
+<label style="font-size:.8rem;color:#b66882;display:block;margin-bottom:4px;">单次回复上限 (max_tokens)</label>
+<input type="number" id="maxTokensInput" min="100" max="32000" step="100" value="4000">
+</div>
 <div class="btn-row"><button class="tiny-btn" id="testApiBtn">🔍 测试</button><button class="tiny-btn" id="saveApiBtn">保存</button><button class="tiny-btn" id="closeApiBtn">取消</button></div>
 <div id="testResult" class="test-result"></div>
 </div></div>
 
 <div class="modal-mask" id="redpacketModal"><div class="modal-card"><h3>🧧 红包</h3><input type="number" id="redpacketAmount" placeholder="金额"><textarea id="redpacketWish" rows="2" placeholder="祝福语"></textarea><div class="btn-row"><button class="tiny-btn" id="sendRedpacketBtn" style="flex:1;">发送</button><button class="tiny-btn" id="cancelRedpacketModal" style="flex:1;">取消</button></div></div></div>
 <div class="modal-mask" id="summaryThresholdModal"><div class="modal-card"><h3>总结阈值</h3><p style="font-size:.8rem;color:#8b6573;">每新增多少条对话自动记忆总结</p><input type="number" id="summaryThresholdInput" value="30"><div class="btn-row"><button class="tiny-btn" id="saveThresholdBtn" style="flex:1;">保存</button><button class="tiny-btn" id="closeThresholdModal" style="flex:1;">取消</button></div></div></div>
+<div class="modal-mask" id="contextSettingsModal"><div class="modal-card">
+<h3>📏 上下文条数</h3>
+<p style="font-size:.8rem;color:#8b6573;line-height:1.5;">单次发送给 AI 的历史消息条数。越大记忆越完整，但更费 token 且可能超模型上限。</p>
+<input type="number" id="contextLimitInput" min="4" max="200" step="1" value="30">
+<p style="font-size:11px;color:#c292a8;margin-top:6px;">推荐 20~40 条。聊天记录本身不删，只是发请求时截取最近 N 条。</p>
+<div class="btn-row"><button class="tiny-btn" id="saveContextBtn" style="flex:1;">保存</button><button class="tiny-btn" id="closeContextModal" style="flex:1;">取消</button></div>
+</div></div>
 <div class="modal-mask" id="manageEmojiModal"><div class="modal-card"><h3>📸 管理表情包</h3><button class="tiny-btn" id="addEmojiBatchBtn" style="width:100%;">➕ 批量添加图片</button><div id="emojiAdminList" style="max-height:260px;overflow-y:auto;margin:12px 0;"></div><button class="btn-primary" id="closeEmojiModal">关闭</button></div></div>
 
 <div class="modal-mask" id="imageViewModal"><div class="modal-card">
@@ -233,9 +249,7 @@ function openDB(){
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = e => {
       const db = e.target.result;
-      if(!db.objectStoreNames.contains(STORE_IMAGES)){
-        db.createObjectStore(STORE_IMAGES, { keyPath: 'id' });
-      }
+      if(!db.objectStoreNames.contains(STORE_IMAGES)) db.createObjectStore(STORE_IMAGES, { keyPath: 'id' });
     };
     req.onsuccess = e => resolve(e.target.result);
     req.onerror = e => reject(e.target.error);
@@ -289,12 +303,7 @@ async function idbCleanOldImages(days){
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   const all = await idbGetAll();
   let deleted = 0;
-  for(const item of all){
-    if(item.ts < cutoff){
-      await idbDeleteImage(item.id);
-      deleted++;
-    }
-  }
+  for(const item of all){ if(item.ts < cutoff){ await idbDeleteImage(item.id); deleted++; } }
   return deleted;
 }
 async function idbClearAll(){
@@ -308,10 +317,9 @@ async function idbClearAll(){
 }
 
 /* =========================================================
-   内存图片缓存
+   内存缓存
    ========================================================= */
-const imageCache = new Map();   // id -> dataURL
-
+const imageCache = new Map();
 async function preloadImages(){
   try{
     const all = await idbGetAll();
@@ -319,19 +327,15 @@ async function preloadImages(){
     console.log(`✅ 已预加载 ${all.length} 张图片到缓存`);
   }catch(e){ console.warn('预加载图片失败', e); }
 }
-function getCachedImage(id){
-  return imageCache.get(id) || null;
-}
+function getCachedImage(id){ return imageCache.get(id) || null; }
 
 /* =========================================================
-   数据迁移：localStorage → IndexedDB
+   迁移
    ========================================================= */
 async function migrateImagesToIDB(){
-  const ROLES_KEY = 'sweet_roles_v19';
-  const EMOJI_KEY = 'emojiLibrary_v16';
+  const ROLES_KEY = 'sweet_roles_v20';
+  const EMOJI_KEY = 'emojiLibrary_v17';
   let migrated = 0;
-
-  // 迁移角色聊天图片
   const rolesRaw = localStorage.getItem(ROLES_KEY);
   if(rolesRaw){
     try{
@@ -352,8 +356,6 @@ async function migrateImagesToIDB(){
       localStorage.setItem(ROLES_KEY, JSON.stringify(roles));
     }catch(e){ console.warn('迁移聊天图片失败', e); }
   }
-
-  // 迁移表情包图片
   const emojiRaw = localStorage.getItem(EMOJI_KEY);
   if(emojiRaw){
     try{
@@ -371,8 +373,6 @@ async function migrateImagesToIDB(){
       localStorage.setItem(EMOJI_KEY, JSON.stringify(emojis));
     }catch(e){ console.warn('迁移表情包失败', e); }
   }
-
-  // 迁移背景图
   const bg = localStorage.getItem('chatBgImage');
   if(bg && bg.startsWith('data:image')){
     try{
@@ -383,13 +383,11 @@ async function migrateImagesToIDB(){
       migrated++;
     }catch(e){ console.warn('迁移背景图失败', e); }
   }
-
   if(migrated > 0) console.log(`✅ 已迁移 ${migrated} 张图片到 IndexedDB`);
-  return migrated;
 }
 
 /* =========================================================
-   持久化请求
+   持久化
    ========================================================= */
 async function requestPersistence(){
   if(!navigator.storage || !navigator.storage.persist) return 'unsupported';
@@ -407,7 +405,6 @@ async function showPersistBanner(){
   const status = await requestPersistence();
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isStandalone = window.navigator.standalone === true;
-
   if(status === 'persisted' || status === 'granted'){
     banner.className = 'persist-banner ok';
     banner.innerHTML = '<span>✅ 数据已持久化，不会被系统清理</span>';
@@ -415,29 +412,29 @@ async function showPersistBanner(){
     setTimeout(() => { banner.style.display = 'none'; }, 4000);
     return;
   }
-
   banner.style.display = 'flex';
   if(isIOS && !isStandalone){
     banner.className = 'persist-banner';
     banner.innerHTML = '<span>⚠️ iOS 提示：请点「分享 → 添加到主屏幕」，从图标打开以保护数据</span><button onclick="this.parentElement.style.display=\'none\'">知道了</button>';
   } else if(isIOS && isStandalone){
     banner.className = 'persist-banner';
-    banner.innerHTML = '<span>⚠️ 持久化未授权，建议在设置中检查存储权限</span><button onclick="this.parentElement.style.display=\'none\'">隐藏</button>';
+    banner.innerHTML = '<span>⚠️ 持久化未授权，建议检查存储权限</span><button onclick="this.parentElement.style.display=\'none\'">隐藏</button>';
   } else {
     banner.className = 'persist-banner ok';
-    banner.innerHTML = '<span>ℹ️ 存储正常。浏览器如果空间紧张，可能会清理数据</span><button onclick="this.parentElement.style.display=\'none\'">隐藏</button>';
+    banner.innerHTML = '<span>ℹ️ 存储正常</span><button onclick="this.parentElement.style.display=\'none\'">隐藏</button>';
   }
 }
 
 /* =========================================================
-   全局数据
+   全局
    ========================================================= */
-const ROLES_KEY = 'sweet_roles_v19';
-const EMOJI_KEY = 'emojiLibrary_v16';
+const ROLES_KEY = 'sweet_roles_v20';
+const EMOJI_KEY = 'emojiLibrary_v17';
 const PERSONA_KEY = 'sweet_userPersona';
 const API_KEY = 'sweet_api';
 const VECTOR_KEY = 'sweet_vector';
 const THRESHOLD_KEY = 'summaryThreshold';
+const CONTEXT_LIMIT_KEY = 'contextLimit';
 const THEME_KEY = 'themeColor';
 const BG_KEY = 'chatBgImageId';
 const CUR_ROLE_KEY = 'sweet_currentRoleId';
@@ -445,23 +442,24 @@ const CUR_ROLE_KEY = 'sweet_currentRoleId';
 let roles = [];
 let currentRoleId = null;
 let globalUserPersona = "你是温柔可爱的少女，喜欢甜点和星星。";
-let apiConfig = { url: "", key: "", model: "", vision: false, visionFormat: "base64" };
+let apiConfig = { url: "", key: "", model: "", vision: false, visionFormat: "base64", maxTokens: 4000 };
 let vectorConfig = { enabled: false, apiKey: "", model: "BAAI/bge-m3", topK: 3 };
 let isLoading = false;
 let summaryThreshold = 30;
+let contextLimit = 30;
 let emojiLibrary = [];
 let themeColor = { r: 255, g: 218, b: 229 };
 let bgImageId = null;
+let typingCancelled = false;
 
 function generateId(){ return Date.now() + '-' + Math.random().toString(36).substr(2,6); }
-
 const defaultRoles = [
   { id: generateId(), name: "月兔·糯糯", avatar: "🐇", description: "软萌兔兔，喜欢星星和胡萝卜蛋糕，说话结尾带'呐~'", messages: [], memories: [], todoList: [], lastSummaryCount: 0 },
   { id: generateId(), name: "糖霜小狐", avatar: "🦊", description: "元气小狐狸，喜欢甜言蜜语，偶尔恶作剧", messages: [], memories: [], todoList: [], lastSummaryCount: 0 }
 ];
 
 /* =========================================================
-   加载数据
+   加载
    ========================================================= */
 async function loadAll(){
   const storedRoles = localStorage.getItem(ROLES_KEY);
@@ -475,6 +473,7 @@ async function loadAll(){
   const storedApi = localStorage.getItem(API_KEY); if(storedApi) try{ apiConfig = Object.assign(apiConfig, JSON.parse(storedApi)); }catch(e){}
   const storedVec = localStorage.getItem(VECTOR_KEY); if(storedVec) try{ vectorConfig = Object.assign(vectorConfig, JSON.parse(storedVec)); }catch(e){}
   const storedThres = localStorage.getItem(THRESHOLD_KEY); if(storedThres) summaryThreshold = parseInt(storedThres) || 30;
+  const storedLimit = localStorage.getItem(CONTEXT_LIMIT_KEY); if(storedLimit) contextLimit = parseInt(storedLimit) || 30;
   const storedEmoji = localStorage.getItem(EMOJI_KEY);
   if(storedEmoji) try{ emojiLibrary = JSON.parse(storedEmoji); }catch(e){}
   if(!emojiLibrary.length){
@@ -489,7 +488,6 @@ async function loadAll(){
   const storedColor = localStorage.getItem(THEME_KEY);
   if(storedColor) try{ themeColor = JSON.parse(storedColor); }catch(e){}
   bgImageId = localStorage.getItem(BG_KEY) || null;
-
   applyTheme();
   syncUIinputs();
   renderRoleListAndTodo();
@@ -497,7 +495,6 @@ async function loadAll(){
   renderEmojiGrid();
   updateTopBar();
 }
-
 function applyTheme(){
   const color = `rgb(${clamp(themeColor.r)},${clamp(themeColor.g)},${clamp(themeColor.b)})`;
   let style = document.getElementById('dynamic-theme');
@@ -550,8 +547,10 @@ function syncUIinputs(){
   document.getElementById('modelName').value = apiConfig.model || "";
   document.getElementById('visionEnabledCheck').checked = !!apiConfig.vision;
   document.getElementById('visionFormat').value = apiConfig.visionFormat || "base64";
+  document.getElementById('maxTokensInput').value = apiConfig.maxTokens || 4000;
   document.getElementById('userPersonaInput').value = globalUserPersona;
   document.getElementById('summaryThresholdInput').value = summaryThreshold;
+  document.getElementById('contextLimitInput').value = contextLimit;
   document.getElementById('vectorEnabled').checked = vectorConfig.enabled;
   document.getElementById('vectorApiKey').value = vectorConfig.apiKey || "";
   document.getElementById('vectorModel').value = vectorConfig.model || "BAAI/bge-m3";
@@ -566,6 +565,7 @@ function saveAll(){
     localStorage.setItem(API_KEY, JSON.stringify(apiConfig));
     localStorage.setItem(VECTOR_KEY, JSON.stringify(vectorConfig));
     localStorage.setItem(THRESHOLD_KEY, summaryThreshold);
+    localStorage.setItem(CONTEXT_LIMIT_KEY, contextLimit);
     localStorage.setItem(EMOJI_KEY, JSON.stringify(emojiLibrary));
     saveTheme();
   }catch(e){
@@ -588,6 +588,11 @@ function formatAssistantText(text){
   if(!paragraphs.length) paragraphs = [text];
   return paragraphs.map(p=>`<p>${escapeHtml(p)}</p>`).join('');
 }
+function escapeHtml(str){ if(!str) return ''; return str.replace(/[&<>]/g, m => m==='&'?'&amp;': m==='<'?'&lt;':'&gt;'); }
+
+/* =========================================================
+   渲染聊天
+   ========================================================= */
 function renderChat(){
   const chatDiv = document.getElementById('chatArea');
   const role = getCurrentRole();
@@ -597,8 +602,8 @@ function renderChat(){
   for(let i=0; i<role.messages.length; i++){
     const msg = role.messages[i];
     const isUser = msg.role === 'user';
-    const bubbleClass = isUser ? 'user-bubble' : 'assistant-bubble';
     const alignClass = isUser ? 'user-message' : 'assistant-message';
+    const bubbleClass = isUser ? 'user-bubble' : 'assistant-bubble';
     let contentHtml = '';
     if(msg.type === 'image'){
       const dataURL = msg.imageId ? getCachedImage(msg.imageId) : null;
@@ -608,20 +613,309 @@ function renderChat(){
     } else if(msg.type === 'redpacket'){
       contentHtml = `<div class="redpacket-card">🧧 ${escapeHtml(msg.amount)}元<br>🎁 ${escapeHtml(msg.wish)}</div>`;
     } else {
-      if(!isUser && msg.type !== 'image' && msg.type !== 'redpacket') contentHtml = formatAssistantText(msg.content);
+      if(!isUser) contentHtml = formatAssistantText(msg.content);
       else contentHtml = escapeHtml(msg.content).replace(/\n/g,'<br>');
     }
-    html += `<div class="message ${alignClass}"><div class="bubble ${bubbleClass}">${contentHtml}</div></div>`;
+    if(isUser){
+      html += `<div class="message ${alignClass}"><div class="bubble ${bubbleClass}">${contentHtml}</div></div>`;
+    } else {
+      const actions = `
+        <div class="assistant-msg-actions">
+          <button data-action="regen" data-mid="${i}" title="重新生成">🔄 重生成</button>
+          <button data-action="edit" data-mid="${i}" title="编辑">✏️ 编辑</button>
+          <button data-action="delete" data-mid="${i}" title="删除">🗑️ 删除</button>
+        </div>`;
+      html += `<div class="message ${alignClass}"><div class="assistant-msg-wrap"><div class="bubble ${bubbleClass}">${contentHtml}</div>${actions}</div></div>`;
+    }
   }
   if(isLoading) html += `<div class="message assistant-message"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
   chatDiv.innerHTML = html;
+
+  // 绑定事件
   chatDiv.querySelectorAll('.chat-img').forEach(img => {
     img.addEventListener('click', () => openImageView(parseInt(img.dataset.mid)));
   });
+  chatDiv.querySelectorAll('.assistant-msg-actions button').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const action = btn.dataset.action;
+      const mid = parseInt(btn.dataset.mid);
+      if(action === 'regen') regenerateFrom(mid);
+      else if(action === 'edit') editAssistantMessage(mid);
+      else if(action === 'delete') deleteAssistantMessage(mid);
+    });
+  });
+
   chatDiv.scrollTop = chatDiv.scrollHeight;
 }
-function escapeHtml(str){ if(!str) return ''; return str.replace(/[&<>]/g, m => m==='&'?'&amp;': m==='<'?'&lt;':'&gt;'); }
 
+/* =========================================================
+   打字机效果
+   ========================================================= */
+async function typewriterRender(msgIndex, fullText){
+  const role = getCurrentRole();
+  if(!role) return;
+  const msg = role.messages[msgIndex];
+  if(!msg) return;
+  typingCancelled = false;
+  msg.content = '';
+  renderChat();
+
+  const chatDiv = document.getElementById('chatArea');
+  const assistantMsgs = chatDiv.querySelectorAll('.assistant-message');
+  const lastAssistant = assistantMsgs[assistantMsgs.length - 1];
+  if(!lastAssistant){
+    msg.content = fullText; renderChat(); return;
+  }
+  const bubble = lastAssistant.querySelector('.assistant-bubble');
+  if(!bubble){
+    msg.content = fullText; renderChat(); return;
+  }
+
+  // 追加光标
+  bubble.innerHTML = '<span class="cursor-blink"></span>';
+
+  const chunkSize = Math.max(1, Math.ceil(fullText.length / 300)); // 长文加快速度
+  const interval = 18;
+  let currentLen = 0;
+
+  while(currentLen < fullText.length){
+    if(typingCancelled) break;
+    currentLen = Math.min(currentLen + chunkSize, fullText.length);
+    const partial = fullText.slice(0, currentLen);
+    bubble.innerHTML = formatAssistantText(partial) + '<span class="cursor-blink"></span>';
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+    await new Promise(r => setTimeout(r, interval));
+  }
+
+  bubble.innerHTML = formatAssistantText(fullText);
+  msg.content = fullText;
+  saveAll();
+  renderChat();
+}
+
+/* =========================================================
+   核心：生成 AI 回复
+   ========================================================= */
+async function generateAssistantResponse(role){
+  if(!apiConfig.url || !apiConfig.key || !apiConfig.model){
+    role.messages.push({ role:'assistant', type:'text', content:'✨ 还没有配置 API 呢～ 点击右上角 ⚙️ 填入你的模型地址、Key 和模型名。', timestamp: Date.now() });
+    saveAll(); renderChat();
+    return;
+  }
+  isLoading = true; renderChat();
+
+  // 构建 system prompt
+  let sysMsg;
+  try{
+    // 用最近一条用户消息作为查询
+    let lastUserContent = '';
+    for(let i = role.messages.length - 1; i >= 0; i--){
+      if(role.messages[i].role === 'user'){
+        const m = role.messages[i];
+        lastUserContent = m.type === 'text' ? m.content : (m.caption || m.wish || '');
+        break;
+      }
+    }
+    sysMsg = await buildSystemPrompt(role, lastUserContent);
+  }catch(e){
+    sysMsg = `你正在扮演角色“${role.name}”，${role.description || "温柔可爱"}。用户人设: ${globalUserPersona}`;
+  }
+
+  // ★ 上下文截断：只发送最近 contextLimit 条
+  let historyToSend = role.messages;
+  if(historyToSend.length > contextLimit){
+    historyToSend = historyToSend.slice(-contextLimit);
+  }
+
+  let apiMessages = [{ role:"system", content: sysMsg }];
+  for(let idx=0; idx<historyToSend.length; idx++){
+    const m = historyToSend[idx];
+    if(m.type === 'image'){
+      if(apiConfig.vision && m.imageId){
+        const dataURL = getCachedImage(m.imageId);
+        if(dataURL){
+          const imgUrl = imageDataToUrl(dataURL);
+          apiMessages.push({
+            role: m.role,
+            content: [
+              { type: "text", text: m.caption ? `用户发来一张图片，他的描述是："${m.caption}"。请先描述你看到的图片内容，然后自然地继续对话。` : `用户发来一张图片，请描述你看到的图片内容，然后自然地继续对话。` },
+              { type: "image_url", image_url: { url: imgUrl } }
+            ]
+          });
+        } else {
+          apiMessages.push({ role: m.role, content: `[用户发送了一张图片，描述: ${m.caption || '图片'}]` });
+        }
+      } else {
+        apiMessages.push({ role: m.role, content: `[用户发送了一张图片，描述: ${m.caption || '图片'}]` });
+      }
+    } else if(m.type === 'redpacket'){
+      apiMessages.push({ role: m.role, content: `[用户发送了红包 ${m.amount}元，祝福: ${m.wish}]` });
+    } else {
+      apiMessages.push({ role: m.role, content: m.content });
+    }
+  }
+
+  const maxTok = parseInt(apiConfig.maxTokens) || 4000;
+
+  try{
+    const data = await safeFetchJSON(apiConfig.url, {
+      method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiConfig.key}`},
+      body: JSON.stringify({ model: apiConfig.model, messages: apiMessages, temperature: 0.8, max_tokens: maxTok })
+    });
+    let reply = extractReplyContent(data);
+    if(!reply || reply.trim()==="") reply = "❌ 模型返回空内容。请检查 API 地址或更换模型。";
+
+    // 添加占位 assistant 消息
+    role.messages.push({ role:'assistant', type:'text', content: '', timestamp: Date.now() });
+    const newIdx = role.messages.length - 1;
+    saveAll();
+    renderChat();
+
+    // 打字机
+    await typewriterRender(newIdx, reply);
+
+    // 后处理
+    await extractTodoFromLastMessages(role);
+    await autoSummarizeIfNeeded(role);
+  } catch(err){
+    let errMsg = err.message;
+    if(errMsg.includes('base64') || errMsg.includes('decode')){
+      errMsg += `\n\n💡 图片格式可能不兼容。请到 ⚙️ 对话 API → 图片发送格式 里切换再试。`;
+    }
+    role.messages.push({ role:'assistant', type:'text', content: `❌ 请求失败: ${errMsg}`, timestamp: Date.now() });
+    saveAll(); renderChat();
+  }
+  isLoading = false; renderChat();
+}
+
+/* =========================================================
+   发送消息
+   ========================================================= */
+async function sendMessageDirect(text, type='text', extra={}){
+  if(isLoading) return;
+  const role = getCurrentRole();
+  if(!role){ alert("未找到当前角色"); return; }
+  typingCancelled = true;  // 打断上一条打字
+
+  let userMsg = { role:'user', type, content: type==='text'?text:(extra.caption||extra.wish||''), timestamp: Date.now() };
+  if(type === 'image'){
+    const imgId = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
+    await idbSaveImage(imgId, extra.imageData);
+    imageCache.set(imgId, extra.imageData);
+    userMsg.imageId = imgId;
+    userMsg.caption = extra.caption;
+    userMsg.visionReply = '';
+  }
+  if(type === 'redpacket'){ userMsg.amount = extra.amount; userMsg.wish = extra.wish; }
+  role.messages.push(userMsg);
+  saveAll(); renderChat();
+
+  await generateAssistantResponse(role);
+}
+
+/* =========================================================
+   重新生成
+   ========================================================= */
+async function regenerateFrom(msgIndex){
+  if(isLoading){ alert('正在生成中，请稍候'); return; }
+  const role = getCurrentRole();
+  if(!role) return;
+  if(!confirm('🔄 撤回这条 AI 回复并重新生成？')) return;
+  typingCancelled = true;
+
+  // 删除从 msgIndex 开始的所有 assistant 消息（通常只有一条）
+  // 但为了安全，删掉这一条及其后面的所有消息（包含可能的后续对话）
+  // 如果 msgIndex 不是最后一条 assistant，需要用户确认
+  const isLast = (() => {
+    for(let i = role.messages.length - 1; i >= 0; i--){
+      if(role.messages[i].role === 'assistant') return i === msgIndex;
+    }
+    return false;
+  })();
+
+  if(!isLast){
+    if(!confirm('⚠️ 这不是最后一条回复，删除它会连同后面的对话一起移除。继续？')) return;
+    role.messages.splice(msgIndex);
+  } else {
+    role.messages.splice(msgIndex, 1);
+  }
+
+  // 确保最后一条是用户消息
+  if(role.messages.length && role.messages[role.messages.length - 1].role !== 'user'){
+    // 如果最后一条还是 assistant，说明用户没发新消息，直接删除
+    // 但我们已经在上面处理了
+  }
+
+  saveAll(); renderChat();
+  await generateAssistantResponse(role);
+}
+
+/* =========================================================
+   编辑 / 删除
+   ========================================================= */
+async function editAssistantMessage(msgIndex){
+  if(isLoading){ alert('正在生成中，请稍候'); return; }
+  const role = getCurrentRole();
+  if(!role || !role.messages[msgIndex]) return;
+  const oldContent = role.messages[msgIndex].content;
+  const newContent = prompt('编辑 AI 回复：', oldContent);
+  if(newContent === null) return;
+  if(!newContent.trim()){ alert('内容不能为空'); return; }
+  role.messages[msgIndex].content = newContent.trim();
+  saveAll();
+  renderChat();
+}
+async function deleteAssistantMessage(msgIndex){
+  if(isLoading){ alert('正在生成中，请稍候'); return; }
+  const role = getCurrentRole();
+  if(!role || !role.messages[msgIndex]) return;
+  if(!confirm('🗑️ 删除这条 AI 回复？')) return;
+  role.messages.splice(msgIndex, 1);
+  saveAll();
+  renderChat();
+}
+
+/* =========================================================
+   待办 / 总结
+   ========================================================= */
+async function extractTodoFromLastMessages(role){
+  if(!apiConfig.url) return;
+  const lastMsgs = role.messages.slice(-5);
+  if(lastMsgs.length < 2) return;
+  let conv = lastMsgs.map(m => `${m.role==='user'?'用户':role.name}: ${m.type==='text'?m.content:(m.caption||m.wish||'')}`).join('\n');
+  const prompt = `分析对话，提取未来计划/待办事件，输出JSON数组 [{"time":"时间","task":"事件","people":"人物"}]，没有则[]。对话：${conv}`;
+  try{
+    const data = await safeFetchJSON(apiConfig.url, { method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiConfig.key}`}, body:JSON.stringify({ model: apiConfig.model, messages:[{role:"user",content:prompt}], temperature:0.2, max_tokens:300 }) });
+    let todos = JSON.parse(data.choices?.[0]?.message?.content || '[]');
+    if(Array.isArray(todos)) for(let t of todos) if(t.task && !role.todoList.some(ex=>ex.task===t.task)) role.todoList.push({ id: Date.now(), time: t.time||"待定", task: t.task, people: t.people||"我们", completed: false });
+    if(todos.length) saveAll();
+  }catch(e){}
+}
+async function autoSummarizeIfNeeded(role){
+  if(!apiConfig.url) return;
+  const currentCount = role.messages.length;
+  const lastCount = role.lastSummaryCount || 0;
+  if(currentCount - lastCount >= summaryThreshold && currentCount > 8){
+    const recent = role.messages.slice(-summaryThreshold);
+    let conv = recent.map(m => `${m.role==='user'?'用户':role.name}: ${m.type==='text'?m.content:(m.caption||m.wish||'')}`).join('\n');
+    const prompt = `总结以上对话的核心记忆（40字内）：\n${conv}`;
+    try{
+      const data = await safeFetchJSON(apiConfig.url, { method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiConfig.key}`}, body:JSON.stringify({ model: apiConfig.model, messages:[{role:"user",content:prompt}], temperature:0.4, max_tokens:120 }) });
+      let summary = extractReplyContent(data);
+      if(summary){
+        role.memories.push({ id: Date.now(), content: summary, timestamp: new Date().toISOString() });
+        role.lastSummaryCount = currentCount;
+        saveAll();
+        if(document.getElementById('memoryModal')?.classList.contains('active')) renderMemoryModal();
+      }
+    }catch(e){}
+  }
+}
+
+/* =========================================================
+   图片查看
+   ========================================================= */
 function openImageView(msgIndex){
   const role = getCurrentRole();
   if(!role || !role.messages[msgIndex]) return;
@@ -636,6 +930,9 @@ function openImageView(msgIndex){
   document.getElementById('imageViewModal').classList.add('active');
 }
 
+/* =========================================================
+   工具：压缩图片、读文件、安全请求
+   ========================================================= */
 function compressImage(file, maxSize = 1024, quality = 0.82){
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -659,10 +956,6 @@ function compressImage(file, maxSize = 1024, quality = 0.82){
     reader.readAsDataURL(file);
   });
 }
-
-/* =========================================================
-   人设文件上传
-   ========================================================= */
 function readTextFile(file){
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -707,10 +1000,6 @@ function pickTextFileAndApply(targetTextareaId, infoDivId){
   };
   input.click();
 }
-
-/* =========================================================
-   安全 JSON 请求
-   ========================================================= */
 async function safeFetchJSON(url, options){
   const resp = await fetch(url, options);
   if(!resp.ok){
@@ -825,130 +1114,6 @@ async function testApiConnection(){
 }
 
 /* =========================================================
-   发送消息
-   ========================================================= */
-async function sendMessageDirect(text, type='text', extra={}){
-  if(isLoading) return;
-  const role = getCurrentRole();
-  if(!role){ alert("未找到当前角色"); return; }
-
-  let userMsg = { role:'user', type, content: type==='text'?text:(extra.caption||extra.wish||''), timestamp: Date.now() };
-  if(type === 'image'){
-    // ★ 图片存 IndexedDB
-    const imgId = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
-    await idbSaveImage(imgId, extra.imageData);
-    imageCache.set(imgId, extra.imageData);
-    userMsg.imageId = imgId;
-    userMsg.caption = extra.caption;
-    userMsg.visionReply = '';
-  }
-  if(type === 'redpacket'){ userMsg.amount = extra.amount; userMsg.wish = extra.wish; }
-  role.messages.push(userMsg);
-  const userMsgIndex = role.messages.length - 1;
-  saveAll(); renderChat();
-
-  if(!apiConfig.url || !apiConfig.key || !apiConfig.model){
-    role.messages.push({ role:'assistant', type:'text', content:'✨ 还没有配置 API 呢～ 点击右上角 ⚙️ 填入你的模型地址、Key 和模型名。', timestamp: Date.now() });
-    saveAll(); renderChat();
-    return;
-  }
-
-  isLoading = true; renderChat();
-  let sysMsg;
-  try{
-    const q = type === 'text' ? text : (extra.caption || extra.wish || '');
-    sysMsg = await buildSystemPrompt(role, q);
-  }catch(e){
-    sysMsg = `你正在扮演角色“${role.name}”，${role.description || "温柔可爱"}。用户人设: ${globalUserPersona}`;
-  }
-
-  let apiMessages = [{ role:"system", content: sysMsg }];
-  for(let idx=0; idx<role.messages.length; idx++){
-    const m = role.messages[idx];
-    if(m.type === 'image'){
-      if(apiConfig.vision && m.imageId){
-        const dataURL = getCachedImage(m.imageId);
-        if(dataURL){
-          const imgUrl = imageDataToUrl(dataURL);
-          apiMessages.push({
-            role: m.role,
-            content: [
-              { type: "text", text: m.caption ? `用户发来一张图片，他的描述是："${m.caption}"。请先描述你看到的图片内容，然后自然地继续对话。` : `用户发来一张图片，请描述你看到的图片内容，然后自然地继续对话。` },
-              { type: "image_url", image_url: { url: imgUrl } }
-            ]
-          });
-        } else {
-          apiMessages.push({ role: m.role, content: `[用户发送了一张图片，描述: ${m.caption || '图片'}]` });
-        }
-      } else {
-        apiMessages.push({ role: m.role, content: `[用户发送了一张图片，描述: ${m.caption || '图片'}]` });
-      }
-    } else if(m.type === 'redpacket'){
-      apiMessages.push({ role: m.role, content: `[用户发送了红包 ${m.amount}元，祝福: ${m.wish}]` });
-    } else {
-      apiMessages.push({ role: m.role, content: m.content });
-    }
-  }
-  try{
-    const data = await safeFetchJSON(apiConfig.url, {
-      method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiConfig.key}`},
-      body: JSON.stringify({ model: apiConfig.model, messages: apiMessages, temperature: 0.8, max_tokens: 4000 })
-    });
-    let reply = extractReplyContent(data);
-    if(!reply || reply.trim()==="") reply = "❌ 模型返回空内容。请检查 API 地址或更换模型。";
-    if(type === 'image' && role.messages[userMsgIndex]){
-      role.messages[userMsgIndex].visionReply = reply;
-    }
-    role.messages.push({ role:'assistant', type:'text', content: reply, timestamp: Date.now() });
-    saveAll(); renderChat();
-    await extractTodoFromLastMessages(role);
-    await autoSummarizeIfNeeded(role);
-  } catch(err){
-    let errMsg = err.message;
-    if(errMsg.includes('base64') || errMsg.includes('decode')){
-      errMsg += `\n\n💡 图片格式可能不兼容。请到 ⚙️ 对话 API → 图片发送格式 里切换再试。`;
-    }
-    role.messages.push({ role:'assistant', type:'text', content: `❌ 请求失败: ${errMsg}`, timestamp: Date.now() });
-    saveAll(); renderChat();
-  }
-  isLoading = false; renderChat();
-}
-
-async function extractTodoFromLastMessages(role){
-  if(!apiConfig.url) return;
-  const lastMsgs = role.messages.slice(-5);
-  if(lastMsgs.length < 2) return;
-  let conv = lastMsgs.map(m => `${m.role==='user'?'用户':role.name}: ${m.type==='text'?m.content:(m.caption||m.wish||'')}`).join('\n');
-  const prompt = `分析对话，提取未来计划/待办事件，输出JSON数组 [{"time":"时间","task":"事件","people":"人物"}]，没有则[]。对话：${conv}`;
-  try{
-    const data = await safeFetchJSON(apiConfig.url, { method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiConfig.key}`}, body:JSON.stringify({ model: apiConfig.model, messages:[{role:"user",content:prompt}], temperature:0.2, max_tokens:300 }) });
-    let todos = JSON.parse(data.choices?.[0]?.message?.content || '[]');
-    if(Array.isArray(todos)) for(let t of todos) if(t.task && !role.todoList.some(ex=>ex.task===t.task)) role.todoList.push({ id: Date.now(), time: t.time||"待定", task: t.task, people: t.people||"我们", completed: false });
-    if(todos.length) saveAll();
-  }catch(e){}
-}
-async function autoSummarizeIfNeeded(role){
-  if(!apiConfig.url) return;
-  const currentCount = role.messages.length;
-  const lastCount = role.lastSummaryCount || 0;
-  if(currentCount - lastCount >= summaryThreshold && currentCount > 8){
-    const recent = role.messages.slice(-summaryThreshold);
-    let conv = recent.map(m => `${m.role==='user'?'用户':role.name}: ${m.type==='text'?m.content:(m.caption||m.wish||'')}`).join('\n');
-    const prompt = `总结以上对话的核心记忆（40字内）：\n${conv}`;
-    try{
-      const data = await safeFetchJSON(apiConfig.url, { method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiConfig.key}`}, body:JSON.stringify({ model: apiConfig.model, messages:[{role:"user",content:prompt}], temperature:0.4, max_tokens:120 }) });
-      let summary = extractReplyContent(data);
-      if(summary){
-        role.memories.push({ id: Date.now(), content: summary, timestamp: new Date().toISOString() });
-        role.lastSummaryCount = currentCount;
-        saveAll();
-        if(document.getElementById('memoryModal')?.classList.contains('active')) renderMemoryModal();
-      }
-    }catch(e){}
-  }
-}
-
-/* =========================================================
    导出
    ========================================================= */
 function formatTime(ts){
@@ -1017,10 +1182,9 @@ function exportAllRoles(){
 async function exportFullBackup(){
   const allImages = await idbGetAll();
   const backup = {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
-    roles, globalUserPersona, apiConfig, vectorConfig, summaryThreshold, emojiLibrary, themeColor,
-    bgImageId,
+    roles, globalUserPersona, apiConfig, vectorConfig, summaryThreshold, contextLimit, emojiLibrary, themeColor, bgImageId,
     images: allImages
   };
   downloadJSON(`蜜糖小镇备份_${getTimestamp()}.json`, backup);
@@ -1037,16 +1201,15 @@ function importBackup(){
       const text = await file.text();
       const backup = JSON.parse(text);
       if(!backup.roles || !Array.isArray(backup.roles)) throw new Error('备份文件格式不对');
-      // 恢复 localStorage
       roles = backup.roles;
       globalUserPersona = backup.globalUserPersona || globalUserPersona;
       apiConfig = backup.apiConfig || apiConfig;
       vectorConfig = backup.vectorConfig || vectorConfig;
       summaryThreshold = backup.summaryThreshold || 30;
+      contextLimit = backup.contextLimit || 30;
       emojiLibrary = backup.emojiLibrary || emojiLibrary;
       themeColor = backup.themeColor || themeColor;
       bgImageId = backup.bgImageId || null;
-      // 恢复 IndexedDB 图片
       if(backup.images && Array.isArray(backup.images)){
         await idbClearAll();
         imageCache.clear();
@@ -1077,11 +1240,8 @@ function renderEmojiGrid(){
     if(em.imageId){
       const dataURL = getCachedImage(em.imageId);
       preview = dataURL ? `<img src="${dataURL}" class="emoji-grid-img">` : `<span style="font-size:42px;">⏳</span>`;
-    } else if(em.emoji){
-      preview = `<span style="font-size:42px;">${em.emoji}</span>`;
-    } else {
-      preview = `<span style="font-size:42px;">🌫️</span>`;
-    }
+    } else if(em.emoji){ preview = `<span style="font-size:42px;">${em.emoji}</span>`; }
+    else preview = `<span style="font-size:42px;">🌫️</span>`;
     html += `<div class="emoji-grid-item" data-id="${em.id}">${preview}<div class="emoji-grid-text">${escapeHtml(em.name)}</div></div>`;
   }
   container.innerHTML = html;
@@ -1093,7 +1253,7 @@ function renderEmojiGrid(){
           const dataURL = getCachedImage(em.imageId);
           if(dataURL){ sendMessageDirect('', 'image', { imageData: dataURL, caption: `[表情] ${em.name}` }); closeEmojiDrawer(); }
         } else if(em.emoji){
-          sendMessageDirect('', 'text', { text: em.emoji });
+          sendMessageDirect(em.emoji, 'text');
           closeEmojiDrawer();
         }
       }
@@ -1110,7 +1270,7 @@ function openEmojiManager(){
         const dataURL = getCachedImage(em.imageId);
         preview = dataURL ? `<img src="${dataURL}" class="emoji-preview">` : `<span>⏳</span>`;
       } else if(em.emoji){ preview = `<span style="font-size:26px;">${em.emoji}</span>`; }
-      else { preview = `<span>🌫️</span>`; }
+      else preview = `<span>🌫️</span>`;
       html += `<div class="emoji-admin-item"><div>${preview}</div><div style="flex:1;"><input type="text" value="${escapeHtml(em.name)}" data-idx="${idx}" class="emoji-name-input" style="margin:0;padding:4px;"></div><button class="tiny-btn del-emoji" data-idx="${idx}">🗑️</button></div>`;
     });
     container.innerHTML = html;
@@ -1194,6 +1354,7 @@ function initThemeControls(){
    ========================================================= */
 function switchRole(roleId){
   if(currentRoleId === roleId){ closeDrawer(); return; }
+  typingCancelled = true;
   currentRoleId = roleId;
   saveAll(); updateTopBar(); renderChat(); renderRoleListAndTodo(); closeDrawer();
 }
@@ -1335,7 +1496,7 @@ async function rebuildAllVectors(){
 }
 
 /* =========================================================
-   红包、图片、事件绑定
+   事件绑定
    ========================================================= */
 document.getElementById('sendRedpacketBtn').onclick = () => {
   const amount = document.getElementById('redpacketAmount').value;
@@ -1395,6 +1556,7 @@ document.getElementById('saveApiBtn').onclick = () => {
   apiConfig.model = document.getElementById('modelName').value.trim();
   apiConfig.vision = document.getElementById('visionEnabledCheck').checked;
   apiConfig.visionFormat = document.getElementById('visionFormat').value;
+  apiConfig.maxTokens = parseInt(document.getElementById('maxTokensInput').value) || 4000;
   saveAll(); alert("API已保存"); document.getElementById('apiModal').classList.remove('active');
 };
 document.getElementById('closeApiBtn').onclick = () => document.getElementById('apiModal').classList.remove('active');
@@ -1405,6 +1567,17 @@ document.getElementById('cancelRoleEditBtn').onclick = closeRoleEditModal;
 document.getElementById('openTodoSettingsBtn').onclick = () => { document.getElementById('moreModal').classList.remove('active'); document.getElementById('summaryThresholdModal').classList.add('active'); };
 document.getElementById('saveThresholdBtn').onclick = () => { summaryThreshold = parseInt(document.getElementById('summaryThresholdInput').value) || 30; saveAll(); alert(`阈值已设为 ${summaryThreshold}`); document.getElementById('summaryThresholdModal').classList.remove('active'); };
 document.getElementById('closeThresholdModal').onclick = () => document.getElementById('summaryThresholdModal').classList.remove('active');
+document.getElementById('openContextSettingsBtn').onclick = () => { document.getElementById('moreModal').classList.remove('active'); document.getElementById('contextSettingsModal').classList.add('active'); };
+document.getElementById('saveContextBtn').onclick = () => {
+  const v = parseInt(document.getElementById('contextLimitInput').value);
+  if(!v || v < 4) { alert('至少 4 条'); return; }
+  if(v > 200) { alert('最多 200 条'); return; }
+  contextLimit = v;
+  saveAll();
+  alert(`✅ 上下文已设为 ${v} 条`);
+  document.getElementById('contextSettingsModal').classList.remove('active');
+};
+document.getElementById('closeContextModal').onclick = () => document.getElementById('contextSettingsModal').classList.remove('active');
 document.getElementById('openEmojiDrawerBtn').onclick = () => { document.getElementById('emojiDrawerOverlay').classList.add('active'); renderEmojiGrid(); };
 document.getElementById('emojiDrawerOverlay').addEventListener('click', e => { if(e.target === document.getElementById('emojiDrawerOverlay')) document.getElementById('emojiDrawerOverlay').classList.remove('active'); });
 document.getElementById('openManageEmojiBtn').onclick = () => { document.getElementById('emojiDrawerOverlay').classList.remove('active'); openEmojiManager(); };
@@ -1424,14 +1597,10 @@ document.getElementById('cleanOldImagesBtn').onclick = async () => {
   if(!confirm(`将删除 ${d} 天前的所有图片（含聊天图片、表情包）\n\n继续？`)) return;
   try{
     const deleted = await idbCleanOldImages(d);
-    // 清理失效引用
     roles.forEach(role => {
       role.messages = role.messages.filter(m => {
         if(m.type === 'image' && m.imageId){
-          if(!imageCache.has(m.imageId)){
-            // 缓存里没有，说明已被删除
-            return false;
-          }
+          if(!imageCache.has(m.imageId)) return false;
         }
         return true;
       });
@@ -1455,10 +1624,8 @@ document.getElementById('saveVectorBtn').onclick = () => {
   document.getElementById('vectorStatus').innerText = "✅ 已保存！";
 };
 document.getElementById('rebuildVectorsBtn').onclick = rebuildAllVectors;
-
 document.getElementById('uploadRoleDescBtn').onclick = () => pickTextFileAndApply('editRoleDesc', 'roleDescFileInfo');
 document.getElementById('uploadUserPersonaBtn').onclick = () => pickTextFileAndApply('userPersonaInput', 'userPersonaFileInfo');
-
 function closeEmojiDrawer(){ document.getElementById('emojiDrawerOverlay').classList.remove('active'); }
 
 /* =========================================================
@@ -1466,20 +1633,15 @@ function closeEmojiDrawer(){ document.getElementById('emojiDrawerOverlay').class
    ========================================================= */
 (async function init(){
   try{
-    // 1. 迁移 localStorage 里的图片到 IndexedDB
     await migrateImagesToIDB();
-    // 2. 预加载所有图片到内存缓存
     await preloadImages();
-    // 3. 加载数据
     await loadAll();
     initThemeControls();
-    // 4. 请求持久化 + 显示状态
     await showPersistBanner();
-    // 5. 更新存储用量
     await updateStorageInfo();
   }catch(e){
     console.error('初始化失败', e);
-    alert('初始化失败：' + e.message + '\n\n如果页面打不开，请到「数据救援」工具导出数据后清空。');
+    alert('初始化失败：' + e.message);
   }
 })();
 </script>
