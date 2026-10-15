@@ -668,34 +668,83 @@ function renderChat(){
 }
 
 /* =========================================================
-   打字机视觉（只改显示，不动数据）
+   打字机（只更新最后一条气泡，不整屏重渲染）
    ========================================================= */
 async function typewriterVisual(role, msgIndex){
   const msg = role.messages[msgIndex];
-  if(!msg) return;
+  if(!msg || !msg.content) return;
   const fullText = msg.content;
-  typingCancelled = false;
-  msg._typing = true;
-  msg._displayLen = 0;
+  const totalLen = fullText.length;
 
-  const chunkSize = Math.max(1, Math.ceil(fullText.length / 200));
+  typingState.active = true;
+  typingState.roleId = role.id;
+  typingState.msgIndex = msgIndex;
+  typingState.displayLen = 0;
+  typingState.cancelled = false;
+
+  // 找到最后一条 assistant 气泡，直接操作它，不重渲染整个聊天区
+  const chatDiv = document.getElementById('chatArea');
+  let bubbles = chatDiv.querySelectorAll('.assistant-bubble');
+  let targetBubble = bubbles[bubbles.length - 1];
+  if(!targetBubble){
+    typingState.active = false;
+    renderChat();
+    return;
+  }
+
+  // 短文本直接显示，不做打字（≤10字）
+  if(totalLen <= 10){
+    targetBubble.innerHTML = formatAssistantText(fullText);
+    typingState.active = false;
+    typingState.roleId = null;
+    typingState.msgIndex = -1;
+    typingState.displayLen = 0;
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+    return;
+  }
+
+  // 根据文本长度自适应速度（长文快，短文慢，总时长约 1~3 秒）
+  const duration = Math.min(3000, Math.max(800, totalLen * 15));
+  const chunkSize = Math.max(1, Math.ceil(totalLen / (duration / 16)));
   const interval = 16;
 
-  while(msg._displayLen < fullText.length){
-    if(typingCancelled) break;
-    msg._displayLen = Math.min(msg._displayLen + chunkSize, fullText.length);
-    renderChat();
+  const nearBottom = () => {
+    return (chatDiv.scrollHeight - chatDiv.scrollTop - chatDiv.clientHeight) < 120;
+  };
+
+  while(typingState.displayLen < totalLen){
+    if(typingState.cancelled) break;
+    // 页面不可见时直接跳到完成，避免后台继续跑
+    if(document.visibilityState === 'hidden') break;
+
+    typingState.displayLen = Math.min(typingState.displayLen + chunkSize, totalLen);
+    const partial = fullText.slice(0, typingState.displayLen);
+
+    // ★ 只更新这一个气泡的 innerHTML，不触发整个聊天区重排
+    targetBubble.innerHTML = formatAssistantText(partial) + '<span class="cursor-blink"></span>';
+
+    // 只有在接近底部时才自动滚动，避免抖动
+    if(nearBottom()){
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
+
     await new Promise(r => setTimeout(r, interval));
   }
 
-  msg._typing = false;
-  delete msg._displayLen;
-  renderChat();
-  // 打字结束后保存一次（清理临时字段）
-  saveAll();
-}
+  // 结束：显示完整内容，清状态
+  typingState.active = false;
+  typingState.roleId = null;
+  typingState.msgIndex = -1;
+  typingState.displayLen = 0;
 
-/* =========================================================
+  // 重新获取一次（防止过程中 DOM 被其他操作替换过）
+  bubbles = chatDiv.querySelectorAll('.assistant-bubble');
+  targetBubble = bubbles[bubbles.length - 1];
+  if(targetBubble){
+    targetBubble.innerHTML = formatAssistantText(fullText);
+  }
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+}/* =========================================================
    核心：生成 AI 回复
    ========================================================= */
 async function generateAssistantResponse(role){
